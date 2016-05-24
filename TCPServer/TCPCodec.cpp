@@ -50,27 +50,28 @@ void TCPCodec::onMessage(const TcpConnectionPtr& conn, Buffer *buf, Timestamp re
             memcpy(get_pointer(message), (u_char *)data + HeaderLength, length - HeaderLength);
 
             //检查帧头CRC16校验信息
-            uint8_t headerCheck = accumulate((u_char *)get_pointer(frameHeader), HeaderLength - 2);
-            if(headerCheck != frameHeader->headerCheck)
+            bool crc16_ok = testCRC16((u_char *)get_pointer(frameHeader), HeaderLength - 2);
+            //检查数据CRC32校验，然后解密
+            bool crc32_ok = testCRC32();
+
+            if(!crc16_ok)
             {
-                LOG_WARN << "Header check sum error";
+                LOG_WARN << "Header CRC16 error";
                 skipWrongFrame(buf);
                 break;
             }
 
-            //检查数据CRC32校验，然后解密
-            uint8_t messageCheck = accumulate((u_char *)get_pointer(message), length - HeaderLength);
-
-
-            else if(messageCheck != frameHeader->messageCheck)
+            else if(!crc32_ok)
             {
-                LOG_WARN << "Message Check sum error";
+                LOG_WARN << "Message CRC32 error";
                 skipWrongFrame(buf);
                 break;
             }
 
             else
             {
+                //解密这一帧
+
                 //打印这一帧，调试用
                 printFrame("Receive", get_pointer(frameHeader), get_pointer(message), (size_t)(length - HeaderLength));
 
