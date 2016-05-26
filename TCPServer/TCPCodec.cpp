@@ -6,7 +6,12 @@ Description: 编码解码TCP信息帧
 **************************************************/
 
 #include "TCPCodec.h"
-
+#include "malloc.h"
+#include "stdio.h"
+#include "string.h"
+#include <sys/time.h>
+#include "aes.h"
+unsigned char key[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};	// 密钥
 
 /*************************************************
 Description:    解码TCP消息帧，检测帧头、帧长度、校验和等
@@ -50,9 +55,9 @@ void TCPCodec::onMessage(const TcpConnectionPtr& conn, Buffer *buf, Timestamp re
             memcpy(get_pointer(message), (u_char *)data + HeaderLength, length - HeaderLength);
 
             //检查帧头CRC16校验信息
-            bool crc16_ok = testCRC16((u_char *)get_pointer(frameHeader), HeaderLength - 2);
+            uint16_t crc16 = CRC16((u_char *)get_pointer(frameHeader), HeaderLength);
             //检查数据CRC32校验，然后解密
-            bool crc32_ok = testCRC32();
+            uint16_t crc32 = CRC32(get_pointer(message),length - HeaderLength);
 
             if(!crc16_ok)
             {
@@ -71,7 +76,7 @@ void TCPCodec::onMessage(const TcpConnectionPtr& conn, Buffer *buf, Timestamp re
             else
             {
                 //解密这一帧
-
+                Decrypt(get_pointer(message), key, length-HeaderLength);
                 //打印这一帧，调试用
                 printFrame("Receive", get_pointer(frameHeader), get_pointer(message), (size_t)(length - HeaderLength));
 
@@ -93,42 +98,46 @@ Calls:          Dispatcher
 Input:          conn: Tcp连接，
                 totalLength: 消息总长度
                 type： 帧类型
-                frameCount: 帧序号
+                seq: 帧序号
                 message: 帧消息字
                 source: 信源
                 destination: 信宿
 Output:         无
 Return:         无
 *************************************************/
-void TCPCodec::send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,uint32_t frameCount, u_char * message,
-          uint32_t destination)
+void TCPCodec::send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,uint32_t seq, u_char * message)
 {
+    int mLength=totalLength - HeaderLength; //信息字加密前的长度
+    int encryLength = computeEncryptedSize(mLength);   //信息字加密后的长度
+    shared_ptr<u_char > encryMessage((u_char *)malloc(encryLength));
     FrameHeader sendFrame;
-    sendFrame.header = Header;
-    sendFrame.length = totalLength;
+    sendFrame.head = Header;
+    sendFrame.len = encryLength + HeaderLength;
+    sendFrame.ver = 0;
+    sendFrame.dev = 0;
     sendFrame.type = type;
-    uint16_t year, md;
-    uint32_t time;
-    getTime(&year, &md, &time);
-    sendFrame.year = year;
-    sendFrame.monAndDay = md;
-    sendFrame.time = time;
-    sendFrame.source = serveAddr_;
-    sendFrame.destination = destination;
-    sendFrame.frameCount = frameCount;
-    sendFrame.messageLength = totalLength - HeaderLength;
 
-    //计算校验和
-    sendFrame.headerCheck = accumulate((u_char *)&sendFrame, HeaderLength - 2);
-    sendFrame.messageCheck = accumulate(message, totalLength - HeaderLength);
+    sendFrame.olen = mLength;
+    sendFrame.enc = 1;
+    sendFrame.seq = seq;
+
+    sendFrame.hard = 0;
+
+    //计算CRC16,CRC32校验
+    sendFrame.headerCheck = CRC16((u_char *)&sendFrame, HeaderLength);
+    sendFrame.messageCheck = CRC32(message, mLength);
+
+    //对message加密
+    expandText(message, get_pointer(encryMessage), mLength, encryLength);
+    Encrypt(get_pointer(encryMessage), key, encryLength);
 
     Buffer buf;
     buf.append((void *)&sendFrame, sizeof(FrameHeader));
-    buf.append(message, totalLength - HeaderLength);
+    buf.append(get_pointer(encryMessage), encryLength);
     conn->send(&buf);
 
     //打印帧内容，调试用
-    printFrame("Send",&sendFrame, message, totalLength - HeaderLength);
+    printFrame("Send",&sendFrame, message, mLength);
 }
 
 /*************************************************
