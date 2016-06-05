@@ -104,7 +104,15 @@ public:
 
 private:
     void confirm(ADDRESS source, shared_ptr<u_char>& message);
+<<<<<<< HEAD
     void openModeMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
+=======
+<<<<<<< HEAD
+    void openModeMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
+=======
+    void openMode(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
+>>>>>>> 10bdc6d775d6dfa226aae615ec56460d73aa5ef1
+>>>>>>> 36d5b7bcd3161db17025c5fe18cf5c7ba76a870a
     void sensorMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
 
     EventLoop* loop_;

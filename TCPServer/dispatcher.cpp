@@ -122,7 +122,15 @@ Input:          conn: TCP连接
 Output:         无
 Return:         无
 *************************************************/
+<<<<<<< HEAD
 void Dispatcher::openModeMessage(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)
+=======
+<<<<<<< HEAD
+void Dispatcher::openModeMessage(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)
+=======
+void Dispatcher::openMode(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)
+>>>>>>> 10bdc6d775d6dfa226aae615ec56460d73aa5ef1
+>>>>>>> 36d5b7bcd3161db17025c5fe18cf5c7ba76a870a
 {
     sendConfirmFrame(conn, frameHeader); //return confirm frame
     openmodeCallback_(frameHeader, message); // messageHandler communicate with sql
