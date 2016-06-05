@@ -42,7 +42,8 @@ typedef struct ContentMode{
 }ContentMode;
 
 typedef struct ContentOpenMode{
-    uint8_t openmode;
+    unsigned isopen:1;
+    unsigned mode:7;
 }ContentOpenMode;
 
 typedef struct ContentSensorData{
