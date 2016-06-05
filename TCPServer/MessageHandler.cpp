@@ -65,10 +65,6 @@ void MessageHandler::getHBaseDateTime(shared_ptr<FrameHeader>& frameHeader, char
     struct tm *p;
     time(&timep);
     p=gmtime(&timep);
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 36d5b7bcd3161db17025c5fe18cf5c7ba76a870a
 
     sprintf(date, "%04d%02d%02d", 1900+p->tm_year, 1+p->tm_mon, p->tm_mday);
 
@@ -76,15 +72,6 @@ void MessageHandler::getHBaseDateTime(shared_ptr<FrameHeader>& frameHeader, char
     int min = p->tm_min;
     sprintf(time, "%02d%02d", hour, min);
 }
-=======
->>>>>>> 10bdc6d775d6dfa226aae615ec56460d73aa5ef1
-
-    sprintf(date, "%04d%02d%02d", 1900+p->tm_year, 1+p->tm_mon, p->tm_mday);
-
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 36d5b7bcd3161db17025c5fe18cf5c7ba76a870a
 
 /*************************************************
 Description:    接收到开关状态信息帧
@@ -102,8 +89,6 @@ void MessageHandler::onOpenModeMessage(shared_ptr<FrameHeader>& frameHeader, sha
     memcpy(&msg, get_pointer(message), sizeof(msg));
 
     senId = frameHeader->hard;
-<<<<<<< HEAD
-
     ProtoMessage protoMessage;
     initializeHBaseProto(frameHeader, message, protoMessage, SENSOR_MSG, senId);
 
@@ -121,45 +106,6 @@ void MessageHandler::onOpenModeMessage(shared_ptr<FrameHeader>& frameHeader, sha
                 " humidity: " << humidity / 10.0 <<
                 " pm2.5 " << pm2p5 / 10.0;
 
-=======
-
-    ProtoMessage protoMessage;
-    initializeHBaseProto(frameHeader, message, protoMessage, SENSOR_MSG, senId);
-
-    isopen = msg.content.openmode.isopen;
-    mode = msg.content.openmode.mode;
-
-    //在Redis更新设备信息
-    char command[256];
-    sprintf(command, "HMSET ENV%06d temperature %f humidity %f pm2p5 %f",
-            senId, temperature / 10.0, humidity / 10.0, pm2p5 / 10.0); //TODO:redis command?
-    RedisReply reply((redisReply*)redisCommand(tcpserver_->redisConn_,command));
-
-    LOG_DEBUG << "Environment: " << senId <<
-                " temperatur: " << temperature / 10.0 <<
-                " humidity: " << humidity / 10.0 <<
-                " pm2.5 " << pm2p5 / 10.0;
-=======
-    int hour = p->tm_hour;
-    int min = p->tm_min;
-    sprintf(time, "%02d%02d", hour, min);
-}
-
-
-
-/*************************************************
-Description:    接收到开关状态信息帧
-Calls:          Dispatcher::lightMessage()
-Input:          frameHeader: 帧头指针
-                message: 消息字指针
-Output:         无
-Return:         无
-*************************************************/
-void MessageHandler::onOpenModeMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message)
-{
->>>>>>> 10bdc6d775d6dfa226aae615ec56460d73aa5ef1
-
->>>>>>> 36d5b7bcd3161db17025c5fe18cf5c7ba76a870a
 }
 
 /*************************************************
@@ -219,15 +165,7 @@ Return:         无
 uint16_t MessageHandler::initializeHBaseProto(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message,
                                               ProtoMessage& protoMessage, MessageType type, int devId)
 {
-<<<<<<< HEAD
     //uint16_t code; //TODO make one by myself
-=======
-<<<<<<< HEAD
-    //uint16_t code; //TODO make one by myself
-=======
-    uint16_t code; //TODO make one by myself
->>>>>>> 10bdc6d775d6dfa226aae615ec56460d73aa5ef1
->>>>>>> 36d5b7bcd3161db17025c5fe18cf5c7ba76a870a
     char date[16], time[16];
     getHBaseDateTime(frameHeader, date, time);
     protoMessage.set_messagetype(type);
