@@ -47,14 +47,8 @@ public:
         tcpserver_(tcpserver),
         rpcClient_(rpcClient) {}
 
-    void onTimingMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
-    void onAlertMessage(const TcpConnectionPtr&conn,shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
-    void onConfigMessage(const TcpConnectionPtr&conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
-    void onLightMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
-    void onEnvMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
-    void onHumanMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
-    void onPowerMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
-
+    void onOpenModeMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
+    void onSensorMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
 
 private:
     /*************************************************

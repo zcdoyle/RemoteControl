@@ -42,7 +42,7 @@ class Dispatcher : boost::noncopyable
 {
 public:
     typedef function<void (shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)> MessageCallback;
-    typedef function<void (const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)> ConfiguraCallback;
+    //typedef function<void (const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)> ConfiguraCallback;
 
     /*************************************************
     Description:    Dispatcher构造函数，设置时间循环和编码解码
@@ -63,21 +63,13 @@ public:
     Output:         无
     Return:         无
     *************************************************/
-    inline void setCallbacks(const MessageCallback& timingCb,
-                     const ConfiguraCallback& alertCb,
-                     const ConfiguraCallback& configCb,
-                     const MessageCallback& lightMsgCb,
-                     const MessageCallback& envCb,
-                     const MessageCallback& humCb,
-                     const MessageCallback& powerCb)
+    inline void setCallbacks(const ConfiguraCallback& configCb,
+                     const MessageCallback& openmodeCb,
+                     const MessageCallback& sensorCb)
     {
-        timingCallback_ = timingCb;
-        alertCallback_ = alertCb;
         configureCallback_ = configCb;
-        lightMessageCallback_ = lightMsgCb;
-        environmentCallback_ = envCb;
-        humanCallback_ = humCb;
-        powerCallback_ = powerCb;
+        openmodeCallback_ = openmodeCb;
+        sensorCallback_ = sensorCb;
     }
 
     /*************************************************
@@ -91,10 +83,10 @@ public:
     Output:         无
     Return:         无
     *************************************************/
-    inline void send(const TcpConnectionPtr& conn, uint16_t totalLength, MessageType type, u_char * message, uint32_t destination)
+    inline void send(const TcpConnectionPtr& conn, uint16_t totalLength, MessageType type,shared_ptr<FrameHeader>& frameHeader, u_char * message)
     {
-        uint32_t frameCount = getAndSetFrameCount(destination, 1); //帧计数加1
-        tcpCodec_.send(conn, totalLength, type, frameCount, message, destination);
+        uint16_t seq = frameHeader->seq + 1; //帧计数加1
+        tcpCodec_.send(conn, totalLength, type, seq, message);
     }
 
     void sendForTimer(weak_ptr<TcpConnection> weakTcpPtr, uint16_t totalLength, MessageType type, u_char * message,
@@ -111,14 +103,9 @@ public:
     bool cancelTimerForDT(ADDRESS destination, MessageType type);
 
 private:
-    void alert(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
-    void timing(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader,  shared_ptr<u_char>& message);
-    void configuration(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
     void confirm(ADDRESS source, shared_ptr<u_char>& message);
-    void lightMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
-    void environmentMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
-    void humanMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
-    void powerMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
+    void openModeMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
+    void sensorMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
 
     EventLoop* loop_;
     TCPCodec& tcpCodec_;
@@ -140,13 +127,8 @@ private:
     MutexLock frameCountMutex_;
     map<ADDRESS , FRAMECOUNT> frameCountMap_;
 
-    MessageCallback timingCallback_;
-    ConfiguraCallback alertCallback_;
-    ConfiguraCallback configureCallback_;
-    MessageCallback lightMessageCallback_;
-    MessageCallback environmentCallback_;
-    MessageCallback humanCallback_;
-    MessageCallback powerCallback_;
+    MessageCallback openmodeCallback_;
+    MessageCallback sensorCallback_;
 };
 
 

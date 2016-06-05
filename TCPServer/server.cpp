@@ -39,13 +39,9 @@ TCPServer::TCPServer(EventLoop* loop, const Configuration &config)
     jsonMessageServer_.setMessageCallback(bind(&JsonCodec::onMessage, &jsonCodec_, _1, _2, _3));
 
     //设置各类处理信息的回调函数  !!派发器利用这些回调函数分发不同消息!!
-    dispatcher_.setCallbacks(bind(&MessageHandler::onTimingMessage, &messageHandler_, _1, _2),
-                             bind(&MessageHandler::onAlertMessage, &messageHandler_, _1, _2, _3),
-                             bind(&MessageHandler::onConfigMessage, &messageHandler_, _1, _2, _3),
-                             bind(&MessageHandler::onLightMessage, &messageHandler_, _1, _2),
-                             bind(&MessageHandler::onEnvMessage, &messageHandler_, _1, _2),
-                             bind(&MessageHandler::onHumanMessage, &messageHandler_, _1, _2),
-                             bind(&MessageHandler::onPowerMessage, &messageHandler_, _1, _2));
+    dispatcher_.setCallbacks(bind(&MessageHandler::onConfigMessage, &messageHandler_, _1, _2, _3),
+                             bind(&MessageHandler::onOpenModeMessage, &messageHandler_, _1, _2),
+                             bind(&MessageHandler::onSensorMessage, &messageHandler_, _1, _2));
 
 }
 

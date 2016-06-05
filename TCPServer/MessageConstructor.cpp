@@ -32,15 +32,10 @@ Input:          message：需要填入帧内容的空间
 Output:         确认信息字帧
 Return:         无
 *************************************************/
-void MessageConstructor::confirmFrame(u_char* message, int frameCount)
+void MessageConstructor::confirmFrame(u_char* message, uint16_t frameCount)
 {
     FrameMessage frameMessage;
-    frameMessage.tableNumber = 0x00;
-    frameMessage.code = 0x0001;
-    frameMessage.type = 0x02;
-    frameMessage.content.confirm.cnt = frameCount;
-    frameMessage.content.confirm.reserve = 0;
-
+    frameMessage.content.confirm.seq = frameCount;
     memcpy(message, &frameMessage, sizeof(frameMessage));
 }
 
