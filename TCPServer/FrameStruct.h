@@ -14,6 +14,7 @@ static const uint16_t HeaderLength = 23;                                    //�
 static const uint32_t Header = 0xEB90146F;                                  //帧头
 static const uint8_t Dev = 0;
 
+typedef uint32_t FRAMECOUNT;                                                //帧计数
 
 //消息类型
 typedef enum MessageType

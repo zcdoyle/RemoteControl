@@ -76,8 +76,8 @@ public:
     Input:          conn: TCP连接
                     totalLength: 帧总长度
                     type: 帧类型
+                    frameHeader:帧头
                     message: 帧消息字
-                    destination: 信宿
     Output:         无
     Return:         无
     *************************************************/
