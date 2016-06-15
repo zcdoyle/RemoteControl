@@ -67,6 +67,7 @@ private:
 
     TCPServer* tcpserver_;
     RpcClient* rpcClient_;
+    MutexLock timeMutex_;
 };
 
 

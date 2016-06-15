@@ -98,6 +98,9 @@ Return:         无
 *************************************************/
 void MessageHandler::getMySQLDateTime(char* date, char* time)
 {
+    //时间函数不是线程安全的, 利用互斥锁保护
+    MutexLockGuard lock(timeMutex_);
+
     time_t timep;
     struct tm *p;
     time(&timep);
@@ -121,6 +124,9 @@ Return:         无
 *************************************************/
 void MessageHandler::getHBaseDateTime(char* date, char* time)
 {
+    //时间函数不是线程安全的, 利用互斥锁保护
+    MutexLockGuard lock(timeMutex_);
+
     time_t timep;
     struct tm *p;
     time(&timep);
@@ -142,6 +148,9 @@ Return:         无
 *************************************************/
 void MessageHandler::getRedisDateTime(char* time)
 {
+    //时间函数不是线程安全的, 利用互斥锁保护
+    MutexLockGuard lock(timeMutex_);
+
     time_t timep;
     struct tm *p;
     time(&timep);

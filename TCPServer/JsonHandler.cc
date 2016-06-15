@@ -170,7 +170,7 @@ void JsonHandler::settingControl(const TcpConnectionPtr& jsonConn, const Documen
     getConnbyDevID(jsonConn,conn,devid);
 
     MessageType type;
-    type = MODE_CTRL;
+    type = SETTING_CTRL;
 
     int MessageLength = 1;
     shared_ptr<u_char> message((u_char*)malloc(1)); //构造控制模式帧，需要1byte空间
@@ -191,7 +191,7 @@ void JsonHandler::updateControl(const TcpConnectionPtr& jsonConn, const Document
     getConnbyDevID(jsonConn,conn,devid);
 
     MessageType type;
-    type = MODE_CTRL;
+    type = UPDATE_CTRL;
 
     int MessageLength = 1;
     shared_ptr<u_char> message((u_char*)malloc(1)); //构造控制模式帧，需要1byte空间

@@ -42,7 +42,6 @@ class Dispatcher : boost::noncopyable
 {
 public:
     typedef function<void (shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)> MessageCallback;
-    //typedef function<void (const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)> ConfiguraCallback;
 
     /*************************************************
     Description:    Dispatcher构造函数，设置时间循环和编码解码
@@ -112,13 +111,11 @@ private:
 
     //以帧计数区分的定时器
     MutexLock confirmMutex_;
-    //map<ADDRESS, map<FRAMECOUNT, TimerId> > confirmTimer_;
     map<FRAMECOUNT, TimerId> confirmTimer_;
 
 
     //帧计数器
     MutexLock frameCountMutex_;
-    //map<ADDRESS , FRAMECOUNT> frameCountMap_;
     int frameCount_;
 
     MessageCallback statusCallback_;

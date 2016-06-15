@@ -24,14 +24,14 @@ Return:         无
 *************************************************/
 void TCPCodec::onMessage(const TcpConnectionPtr& conn, Buffer *buf, Timestamp receiveTime)
 {
-    while(buf->readableBytes() >= sizeof(int64_t)) //TODO：确定循环条件。循环读取知道buffer的内容不够一条完整的消息
+    while(buf->readableBytes() >= sizeof(int64_t)) //TODO：确定循环条件。循环读取直到buffer的内容不够一条完整的帧头+长度
     {
         const void* data = buf->peek();
         //帧头
         shared_ptr<FrameHeader> frameHeader(new FrameHeader);
         memcpy(get_pointer(frameHeader), data, sizeof(FrameHeader));
 
-        uint8_t header = frameHeader->head;
+        uint32_t header = frameHeader->head;
         uint16_t length = frameHeader->len;
 
         if(header != Header)
@@ -48,7 +48,7 @@ void TCPCodec::onMessage(const TcpConnectionPtr& conn, Buffer *buf, Timestamp re
             skipWrongFrame(buf);
             break;
         }
-        else if(buf->readableBytes() >= (uint16_t)length) //TODO:确定判断失败条件
+        else if(buf->readableBytes() >= (uint16_t)length)
         {
             //帧信息字
             shared_ptr<u_char > message((u_char *)malloc(length - HeaderLength));
@@ -58,6 +58,7 @@ void TCPCodec::onMessage(const TcpConnectionPtr& conn, Buffer *buf, Timestamp re
             uint16_t crc16 = CRC16((u_char *)get_pointer(frameHeader), HeaderLength);
             //检查数据CRC32校验，然后解密
             uint16_t crc32 = CRC32(get_pointer(message),length - HeaderLength);
+            bool crc16_ok,crc32_ok;
 
             if(!crc16_ok)
             {
@@ -81,7 +82,7 @@ void TCPCodec::onMessage(const TcpConnectionPtr& conn, Buffer *buf, Timestamp re
                 printFrame("Receive", get_pointer(frameHeader), get_pointer(message), (size_t)(length - HeaderLength));
 
                 //收到一个完整的帧，交给回调函数处理
-                buf->retrieve(length);
+                buf->retrieve(length); //将buf中length长度的内容清掉
                 dispatcherCallback_(conn, frameHeader, message, receiveTime);
             }
         }
@@ -152,10 +153,9 @@ Return:         无
 void TCPCodec::printFrame(std::string tag,FrameHeader *frame, u_char* message, size_t messageLen)
 {
     char headerLine[256];
-    sprintf(headerLine, "%s Header: Header:%02x,length:%d,Type:%02x,year:%d, monAndDay:%d, time:%d, source:%02x, destination:%02x,"
+    sprintf(headerLine, "%s Header: Header:%02x,length:%d,Type:%02x,
                         "frameCount:%d, MessageLength:%d, headerCheck:%02x, messageCheck:%02x", tag.c_str(),
-            frame->header, frame->length, frame->type, frame->year, frame->monAndDay,frame->time,frame->source, frame->destination,
-            frame->frameCount, frame->messageLength, frame->headerCheck, frame->messageCheck);
+            frame->head, frame->len, frame->type, frame->seq, messageLen, frame->headerCheck, frame->messageCheck);
 
     std::string mess = tag;
     mess += " Message: ";
@@ -168,31 +168,6 @@ void TCPCodec::printFrame(std::string tag,FrameHeader *frame, u_char* message, s
 
     LOG_DEBUG << headerLine;
     LOG_DEBUG << mess;
-}
-
-
-/*************************************************
-Description:    获取当前时间，并转化成帧的时间格式
-Calls:          TCPCodec::send
-Input:          无
-Output:         year: 年
-                md: 月日, 如1225
-                time: 当天从零点开始的毫秒数
-Return:         无
-*************************************************/
-void TCPCodec::getTime(uint16_t* year, uint16_t *md, uint32_t *time)
-{
-    //时间函数不是线程安全的, 利用互斥锁保护
-    MutexLockGuard lock(timeMutex_);
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-
-    struct tm *p;
-    p = localtime(&tv.tv_sec);
-
-    *year = (1900 + p->tm_year);
-    *md = (1 + p->tm_mon) * 100 + p->tm_mday;
-    *time = ((p->tm_hour * 60 + p->tm_min) * 60 + p->tm_sec) * 1000 + tv.tv_usec / 1000;
 }
 
 

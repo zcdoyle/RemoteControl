@@ -66,13 +66,9 @@ public:
     void sendProtoMessage(ProtoMessage message, ConnectionType type);
     void start();
 
-    void updateDeviceInfo(MySQLResponse* response, MySQLRpcParam *param);
-    void setupUpdateFrame(vector<u_char>& sendMessage, const char* cfg, uint16_t code);
-
     /*************************************************
-    Description:    根据设备id和设备类型得到TCP连接
-    Input:          devId：设备id
-                    devType：设备类型
+    Description:    根据设备id得到TCP连接
+    Input:          devid：设备id
     Output:         无
     Return:         该设备对应的TCP连接
     *************************************************/
@@ -93,7 +89,7 @@ public:
     Output:         无
     Return:         无
     ***************************************************/
-    inline void sendWithTimer(TcpConnectionPtr conn, MessageType type, uint16_t totalLength, shared_ptr<u_char> message) //TODO:need lightid?
+    inline void sendWithTimer(TcpConnectionPtr conn, MessageType type, uint16_t totalLength, shared_ptr<u_char> message)
     {
         weak_ptr<TcpConnection> weakTcpPtr(conn);
         function<void ()> retryExceedHandler = bind(&TCPServer::retryExceedMaxNumer, this, weakTcpPtr);
@@ -105,11 +101,12 @@ public:
         TcpConnectionPtr conn(weakConn.lock());
         if (conn)
         {
+            clearConnectionInfo(conn);
             conn->shutdown();
         }
     }
 
-    //void clearConnectionInfo(const TcpConnectionPtr conn, MessageType messageType); //TODO:need this function?
+    void clearConnectionInfo(const TcpConnectionPtr conn);
 
     Dispatcher dispatcher_;
     redisContext* redisConn_;

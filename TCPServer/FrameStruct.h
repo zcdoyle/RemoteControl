@@ -26,8 +26,8 @@ typedef enum MessageType
     STATUS_MSG = 0x05,
     SENSOR_MSG = 0x06,
     ERROR_MSG = 0x07,
-    UPDATE = 0x08,
-    DEVID = 0x09,
+    UPDATE_CTRL = 0x08,
+    DEVID_MSG = 0x09,
 }MessageType;
 
 #pragma pack(1)
