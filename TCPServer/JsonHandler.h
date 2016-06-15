@@ -1,10 +1,9 @@
 /*************************************************
-Copyright: SmartLight
-Author: albert
-Date: 2016-01-15
+Copyright: RemoteControl
+Author: zcdoyle
+Date: 2016-06-13
 Description：处理JSON消息
 **************************************************/
-
 #ifndef JSON_HANDLER_H
 #define JSON_HANDLER_H
 
@@ -80,59 +79,24 @@ private:
         }
     }
 
-    
-    /*************************************************
-    Description:    以十六进制形式显示结果，调试用
-    Calls:          JsonHandler:
-    Input:          data：消息字段
-                    length：消息长度
-    Output:         无
-    Return:         无
-    *************************************************/
-    void printEEPROM(const u_char* data, size_t length)
-    {
-        char resultString[1024];
-        for(size_t i = 0; i < length; i++)
-            sprintf(resultString + i * 2, "%02x", data[i]);
-        resultString[length * 2] = 0;
-        LOG_DEBUG << resultString;
-    }
+    void JsonHandler::getConnbyDevID(const TcpConnectionPtr& jsonConn, TcpConnectionPtr& conn, int devid);
 
-    bool getConnAndDevNum(const TcpConnectionPtr& jsonConn, TcpConnectionPtr& conn, int& devNum,int devId, DeviceType type);
-
-    void searchAllEquipment(const TcpConnectionPtr &jsonConn, const Document& jsonObject);
-    void searchSingleEquipment(const TcpConnectionPtr &jsonConn, const Document& jsonObject);
-    void getLightElectricity(const TcpConnectionPtr &jsonConn, const Document& jsonObject);
-    void getLightPWM(const TcpConnectionPtr &jsonConn, const Document& jsonObject);
-    void manualControl(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
-    void planControl(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
-    void getEnvironment(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
-    void getHuman(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
-    void soundControl(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
-    void getPower(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
-    void getConfig(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
-    void updateConfiguration(const TcpConnectionPtr& conn, const Document& jsonObject);
-    void getEEPROM(MySQLResponse* response, MySQLRpcParam *param);
-
-    void test(const TcpConnectionPtr& jsonConn, const Document& document);
+    void openControl(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
+    void modeControl(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
+    void timeControl(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
+    void settingControl(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
+    void updateControl(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
 
     EventLoop* loop_;
     RpcClient* rpcClient_;
     TCPServer* tcpServer_;
 
-    const static char* SearchAllEquipment;
-    const static char* SearchSingleEquipment;
-    const static char* LightElectricity;
-    const static char* LightPWM;
-    const static char* ManualControl;
-    const static char* PlanControl;
-    const static char* GetEnvironment;
-    const static char* GetHuman;
-    const static char* SoundControl;
-    const static char* GetPower;
-    const static char* GetConfig;
-    const static char* UpdateConfig;
-    const static char* Test;
+    const static char* OpenControl;
+    const static char* ModeControl;
+    const static char* TimeControl;
+    const static char* ChildLockControl;
+    const static char* ErrorReminderControl;
+    const static char* UpdateControl;
 };
 
 #endif

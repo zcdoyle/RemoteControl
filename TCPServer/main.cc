@@ -1,7 +1,7 @@
 /*************************************************
-Copyright: SmartLight
-Author: albert
-Date: 2015-12-15
+Copyright: RemoteControl
+Author: zcdoyle
+Date: 2016-06-13
 Description：程序入口
 **************************************************/
 

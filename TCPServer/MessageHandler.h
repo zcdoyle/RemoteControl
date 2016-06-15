@@ -1,14 +1,14 @@
 /*************************************************
-Copyright: SmartLight
-Author: albert
-Date: 2016-01-16
-Description: 消息处理器，完成具体消息的操作
+Copyright: RemoteControl
+Author: zcdoyle
+Date: 2016-06-13
+Description：消息处理器，完成具体消息的操作
 **************************************************/
 
 #ifndef TCPSERVER_MESSAGEHANDLER_H
 #define TCPSERVER_MESSAGEHANDLER_H
 #include "TCPCodec.h"
-#include "SmartCity.ProtoMessage.pb.h"
+#include "SmartCity.ProtoMessage.pb.h" //TODO:update
 #include "dispatcher.h"
 
 #include <boost/bind.hpp>
@@ -47,31 +47,22 @@ public:
         tcpserver_(tcpserver),
         rpcClient_(rpcClient) {}
 
-    void onOpenModeMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
+    void onStatusMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
     void onSensorMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
+    void onErrorMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
+    void onDevidMessage(const TcpConnectionPtr&conn,shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message);
+
+    void updateStatusDatainRedis(uint32_t DeviceID, uint32_t switchStatus, uint32_t modeStatus, uint32_t windSpeed, uint32_t timing, uint32_t ver, uint32_t childLock, uint32_t errorReminder, string timeStr);
+    void updateSensorDatainRedis(uint32_t DeviceID, uint16_t hcho, uint16_t pm2p5, uint16_t temperature, uint16_t humidity, string timeStr);
+    void updateErrorDatainRedis(uint32_t DeviceID, uint32_t fsc, uint32_t ibc, uint32_t ibe, float uve, string timeStr);
 
 private:
-    /*************************************************
-    Description:    把帧头时间转换成MySQL时间标准格式
-    Calls:          MessageHandler::
-    Input:          message: 帧消息字
-    Output:         消息字编码号
-    Return:         无
-    *************************************************/
-    inline uint16_t getMessageCode(shared_ptr<u_char> message)
-    {
-        uint16_t code;
-        memcpy(&code, get_pointer(message) + 1, sizeof(code));
-        return code;
-    }
 
-    void getMySQLDateTime(shared_ptr<FrameHeader>& frameHeader, char *date, char *time);
-    void getHBaseDateTime(shared_ptr<FrameHeader>& frameHeader, char* date, char* time);
-    void getTime(shared_ptr<FrameHeader>& frameHeader, char* time);
+    void getMySQLDateTime(char* date, char* time);
+    void getHBaseDateTime(char* date, char* time);
+    void getRedisDateTime(char* time);
 
-    void setSensorId(const TcpConnectionPtr&conn, FrameMessage& msg, int netWorkNumber);
-
-    uint16_t initializeHBaseProto(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message,
+    void initializeHBaseProto(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message,
                                   ProtoMessage& protoMessage, MessageType type, int devId);
 
     TCPServer* tcpserver_;

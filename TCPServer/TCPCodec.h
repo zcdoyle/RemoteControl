@@ -51,25 +51,21 @@ public:
     Return:         无
     *************************************************/
     explicit  TCPCodec(int dest,const StringMessageCallback& cb):
-        dispatcherCallback_(cb),
-        serveAddr_(dest)
+        dispatcherCallback_(cb)
     {}
 
     void onMessage(const TcpConnectionPtr& conn, Buffer *buf, Timestamp receiveTime);
 
 private:
 
-    void send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,uint32_t frameCount, u_char * message);
+    void send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,uint32_t seq, u_char * message);
 
     void printFrame(std::string tag,FrameHeader *frame, u_char* message, size_t messageLen);
     void getTime(uint16_t* year, uint16_t *md, uint32_t *time);
-    static uint8_t accumulate(u_char *message, size_t length);
     void skipWrongFrame(Buffer *buf);
 
     StringMessageCallback dispatcherCallback_;
     MutexLock timeMutex_;
-    //服务器信宿
-    const int serveAddr_;
 };
 
 

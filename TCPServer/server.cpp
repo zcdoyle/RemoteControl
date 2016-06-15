@@ -1,8 +1,8 @@
 /*************************************************
-Copyright: SmartLight
-Author: albert
-Date: 2015-12-16
-Description: TCPServer 收发模块
+Copyright: RemoteControl
+Author: zcdoyle
+Date: 2016-06-13
+Description：TCP 收发模块
 **************************************************/
 
 
@@ -24,7 +24,7 @@ TCPServer::TCPServer(EventLoop* loop, const Configuration &config)
               server_(loop, InetAddress(config.listenPort_), "TCPServer"),
               jsonMessageServer_(loop, InetAddress(config.jsonListenPort_), "JSONMessageServer"),
               dispatcher_(loop, tcpCodec_, config.timeout_sec_),
-              tcpCodec_(config.serverAddr_, bind(&Dispatcher::onStringMessage, &dispatcher_, _1, _2, _3, _4)),
+              tcpCodec_(bind(&Dispatcher::onStringMessage, &dispatcher_, _1, _2, _3, _4)),
               protoCodec_(),
               rpcClient_(loop, InetAddress(config.MySQLProxyAddress_, config.MySQLRPCPort_)),
               messageHandler_(this, &rpcClient_),
@@ -32,16 +32,17 @@ TCPServer::TCPServer(EventLoop* loop, const Configuration &config)
               jsonCodec_(bind(&JsonHandler::onJsonMessage, jsonHandler_, _1, _2))
 {
     server_.setConnectionCallback(bind(&TCPServer::onServerConnection, this, _1));
-    server_.setMessageCallback(bind(&TCPCodec::onMessage, &tcpCodec_, _1, _2, _3)); //!!消息编码回调!!
+    server_.setMessageCallback(bind(&TCPCodec::onMessage, &tcpCodec_, _1, _2, _3)); //消息编码回调
     server_.setThreadNum(config.threadNum_); //设定线程数
 
     jsonMessageServer_.setConnectionCallback(bind(&TCPServer::onJsonConnection, this, _1));
     jsonMessageServer_.setMessageCallback(bind(&JsonCodec::onMessage, &jsonCodec_, _1, _2, _3));
 
-    //设置各类处理信息的回调函数  !!派发器利用这些回调函数分发不同消息!!
-    dispatcher_.setCallbacks(bind(&MessageHandler::onConfigMessage, &messageHandler_, _1, _2, _3),
-                             bind(&MessageHandler::onOpenModeMessage, &messageHandler_, _1, _2),
-                             bind(&MessageHandler::onSensorMessage, &messageHandler_, _1, _2));
+    //设置各类处理信息的回调函数,派发器利用这些回调函数分发不同消息
+    dispatcher_.setCallbacks(bind(&MessageHandler::onStatusMessage, &messageHandler_, _1, _2),
+                             bind(&MessageHandler::onSensorMessage, &messageHandler_, _1, _2),
+                             bind(&MessageHandler::onErrorMessage, &messageHandler_, _1, _2),
+                             bind(&MessageHandler::onDevidMessage, &messageHandler_, _1, _2));
 
 }
 
@@ -81,7 +82,7 @@ void TCPServer::start()
     jsonMessageServer_.start();
 
     connectRedis();
-    rpcClient_.connect();
+    rpcClient_.connect(); //TODO:RPCClient usage?
 
 //    Http::post(config_.smsAddress_, config_.smsPort_, config_.smsPage, "msg=TCPServer模块启动 【智慧路灯】");
 }
@@ -99,43 +100,24 @@ void TCPServer::onServerConnection(const TcpConnectionPtr& conn)
              << conn->localAddress().toIpPort() << " is "
              << (conn->connected() ? "UP" : "DOWN");
 
-    if(conn->connected())
+    if(!conn->connected())
     {
-        //新建立连接时搜寻该连接所有设备
-        sendSearchMessage(conn);
-    }
-    else
-    {
-        TcpConnectionPtr c(conn);
-        clearConnectionInfo(conn,LOST_CONNECTION);
+        clearConnectionInfo(conn);
     }
 }
 
-void TCPServer::clearConnectionInfo(const TcpConnectionPtr conn, MessageType messageType)
+void TCPServer::clearConnectionInfo(const TcpConnectionPtr conn)
 {
     //清除连接信息
     MutexLockGuard lock(devConnMutex_);
-    map<TcpConnectionPtr, vector<DEVNO_TYPE> >::iterator mapIt = connHasDev_.find(conn);
-    if(mapIt != connHasDev_.end())
+    map<TcpConnectionPtr, DEVID>::iterator connIt = connHasDev_.find(conn);
+    if(connIt != connHasDev_.end())
     {
-        //获取灯杆id列表
-        ProtoMessage protoMessage;
-        protoMessage.set_messagetype(messageType);
-        ProtoMessage_ConnectionError* errorId = protoMessage.mutable_errorid();
-        for(vector<DEVNO_TYPE>::iterator vecIt = mapIt->second.begin(); vecIt != mapIt->second.end(); vecIt++)
-        {
-            DEVNO_TYPE noType = *vecIt;
-            if(getDevType(noType) == LIGHT)
-            {
-                errorId->add_lightid(getDevId(noType));
-            }
-
-            map<DEVNO_TYPE, TcpConnectionPtr>::iterator devToConnIt = devToConn_.find(noType);
-            if(devToConnIt != devToConn_.end())
-                devToConn_.erase(devToConnIt);
-        }
-        connHasDev_.erase(mapIt);
-        sendProtoMessage(protoMessage, MySQL);
+        DEVID id = connIt->second;
+        map<DEVID, TcpConnectionPtr>::iterator devToConnIt = devToConn_.find(id);
+        if(devToConnIt != devToConn_.end())
+            devToConn_.erase(devToConnIt);
+        connHasDev_.erase(connIt);
     }
 }
 
@@ -217,7 +199,7 @@ void TCPServer::onHBaseProxyConnection(const TcpConnectionPtr &conn)
 }
 
 /***************************************************
-Description:    向数据库代理模块（MySQLProxy或者HBaseProxy）发送信息  !!重点!!利用protobuf向数据库发消息!
+Description:    向数据库代理模块（MySQLProxy或者HBaseProxy）发送信息 利用protobuf向数据库发消息
 Calls:          MessageHandler::
 Input:          messageToSend：待发送的protobuf message
                 type：连接类型
@@ -266,104 +248,6 @@ void TCPServer::threadInit(EventLoop* loop)
     hbaseProxyPtr->connect();
     UnSendMessages::instance()[HBase].clear();
     LOG_INFO << "Thread init succssful";
-}
-
-/***************************************************
-Description:    更新连接情况，并向硬件发送配置信息
-Calls:          RPCClient::
-Input:          response:RPC响应
-                param:RPC传参
-Output:         无
-Return:         无
-***************************************************/
-void TCPServer::updateDeviceInfo(MySQLResponse* response, MySQLRpcParam *param)
-{
-    MySQLResponse_DeviceNumber dev = response->devnumber();
-    LOG_DEBUG << dev.light_id() << " " << dev.light_number();
-
-    {
-        MutexLockGuard lock(lightIdToNumberMutex_);
-        lightIdToNumber_[dev.light_id()] = dev.light_number();
-    }
-
-    {
-        MutexLockGuard lock(lightNumberToIdMutex_);
-        lightNumberToId_[dev.light_number()] = dev.light_id();
-    }
-
-    vector<DEVNO_TYPE> devVector;
-    map<TcpConnectionPtr, vector<DEVNO_TYPE> >::iterator it = connHasDev_.find(param->conn);
-    if (it != connHasDev_.end())
-    {
-        devVector = it->second;
-    }
-
-    MutexLockGuard lock(devConnMutex_);
-    LOG_DEBUG << "light id: " << dev.light_id();
-    updateConnectionInfo(dev.light_id(), LIGHT, devVector, param->conn);
-
-    if(dev.has_environment())
-    {
-        LOG_DEBUG << "environment: " << dev.environment();
-        updateConnectionInfo(dev.environment(), ENVIRONMENT, devVector, param->conn);
-    }
-    if(dev.has_car())
-    {
-        LOG_DEBUG << "car " << dev.car();
-        updateConnectionInfo(dev.car(), CAR, devVector, param->conn);
-    }
-    if(dev.has_human())
-    {
-        LOG_DEBUG << "human " << dev.human();
-        updateConnectionInfo(dev.human(), HUMAN, devVector, param->conn);
-    }
-    if(dev.has_sound())
-    {
-        LOG_DEBUG << "sound " << dev.sound();
-        updateConnectionInfo(dev.sound(),SOUND, devVector, param->conn);
-    }
-
-    connHasDev_[param->conn] = devVector;
-
-    LOG_INFO << "Update Connection Infomation successfully";
-
-    vector<u_char> sMessage;
-    setupUpdateFrame(sMessage, dev.envconfig().c_str(), 0x0021);
-    setupUpdateFrame(sMessage, dev.carconfig().c_str(), 0x0022);
-    setupUpdateFrame(sMessage, dev.humanconfig().c_str(), 0x0023);
-    setupUpdateFrame(sMessage, dev.soundconfig().c_str(), 0x0024);
-
-    shared_ptr<u_char> sendMessage((u_char*)malloc(sMessage.size()));
-    memcpy(get_pointer(sendMessage), &sMessage[0], sMessage.size());
-    sendWithTimerForDC(dev.light_number(), param->conn,
-                               CONFIGURE_UPDATE, HeaderLength + sMessage.size(), sendMessage, dev.light_id());
-
-    delete param;
-}
-
-/***************************************************
-Description:    设置更新设备信息帧
-Calls:          TCPServer::updateDeviceInfo
-Input:          sendMessage:需要发送的帧消息字
-                cfg:配置内容
-                code:编码
-Output:         无
-Return:         无
-***************************************************/
-void TCPServer::setupUpdateFrame(vector<u_char> &sendMessage, const char* cfg, uint16_t code)
-{
-    uint32_t notFoundFlag;
-    memcpy(&notFoundFlag, cfg, sizeof(notFoundFlag));
-    if (notFoundFlag != 0x01FFFFFF)
-    {
-        //没有此设备，则不发送配置内容
-        FrameMessage msg;
-        msg.tableNumber = 0x04;
-        msg.type = 0xF8;
-        msg.code = code;
-        memcpy(&(msg.content), cfg, MessageContentLength);
-        sendMessage.insert(sendMessage.end(),(u_char*)&msg, (u_char*)&msg + MessageLength);
-    }
 }
 
 

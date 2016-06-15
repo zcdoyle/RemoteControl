@@ -195,23 +195,6 @@ void TCPCodec::getTime(uint16_t* year, uint16_t *md, uint32_t *time)
     *time = ((p->tm_hour * 60 + p->tm_min) * 60 + p->tm_sec) * 1000 + tv.tv_usec / 1000;
 }
 
-/*************************************************
-Description:    计算累加和
-Calls:          TCPCodec::send, onMessage
-Input:          message: 信息内容
-                length: 消息长度
-Output:         无
-Return:         累加和，取低8位
-*************************************************/
-uint8_t TCPCodec::accumulate(u_char *message, size_t length)
-{
-    uint64_t sum = 0;
-    for(size_t i = 0; i < length; i++)
-    {
-        sum += message[i];
-    }
-    return (uint8_t)(sum & 0x00000000000000FF); //低8位
-}
 
 /*************************************************
 Description:    跳过错误数据帧

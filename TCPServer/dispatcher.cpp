@@ -1,8 +1,8 @@
 /*************************************************
-Copyright: SmartLight
-Author: albert
-Date: 2015-12-17
-Description: 消息分发器，根据设备发来不同的帧做对应的处理
+Copyright: RemoteControl
+Author: zcdoyle
+Date: 2016-06-13
+Description：消息分发器，根据设备发来不同的帧做对应的处理
 **************************************************/
 
 #include "dispatcher.h"
@@ -12,7 +12,59 @@ Description: 消息分发器，根据设备发来不同的帧做对应的处理
 #include <sys/time.h>
 
 
+/*************************************************
+Description:    设置状态回复定时器，以帧计数区分
+Calls:          TCPServer::
+Input:          destination: 信宿
+                conn：TCP连接
+                totalLength：帧总长度
+                tpye：帧类型
+                message：帧消息字
+Output:         无
+Return:         无
+*************************************************/
+void Dispatcher::setTimer(TcpConnectionPtr& conn, uint16_t totalLength, MessageType type, u_char * message, function<void ()> retryExceedHandler)
+{
+    //帧计数加1，并取消相关定时器
+    uint32_t count = frameCount_++; //TODO:这样做是否合理，原来是看是否存在这个信宿，不存在为0,存在累加；现在就是从0开始累加
 
+    shared_ptr<int> retryCount(new int);
+    *retryCount = 0;
+    weak_ptr<TcpConnection> weakTcpPtr(conn);
+    function<void()> sendFunc = bind(&Dispatcher::sendForTimer,this, weakTcpPtr, totalLength, type, message, count, retryCount,retryExceedHandler);
+    //创建定时器，并记录id
+    TimerId timerId = loop_->runEvery(timeoutSec_, sendFunc);
+    cancelTimer(count);
+    {
+        MutexLockGuard lock(confirmMutex_);
+        confirmTimer_[count] = timerId;
+    }
+    //立即发送
+    sendFunc();
+}
+
+/*************************************************
+Description:    取消帧计数区分的定时器
+Calls:          Dispatcher::
+Input:          destination: 信宿
+                count: 帧计数
+Output:         无
+Return:         是否设置了定时器
+*************************************************/
+bool Dispatcher::cancelTimer(FRAMECOUNT count)
+{
+    //查找对应元素的迭代器
+    MutexLockGuard lock(confirmMutex_);
+    map<FRAMECOUNT, TimerId>::iterator it = confirmTimer_.find(count);
+    if(it != confirmTimer_.end())
+    {
+        //找到后取消定时器，删除对应元素
+        loop_->cancel(it->second);
+        confirmTimer_.erase(count);
+        return true;
+    }
+    return false;
+}
 /*************************************************
 Description:    发送消息
 Calls:          TCPServer::
@@ -26,8 +78,7 @@ Output:         无
 Return:         无
 *************************************************/
 void Dispatcher::sendForTimer(weak_ptr<TcpConnection> weakTcpPtr, uint16_t totalLength, MessageType type, u_char * message,
-                         uint32_t destination, uint32_t frameCount, shared_ptr<int> retryCount,
-                              function<void ()> retryExceedHandler)
+                         uint32_t frameCount, shared_ptr<int> retryCount,function<void ()> retryExceedHandler)
 {
     int retryCnt = *retryCount;
     TcpConnectionPtr conn(weakTcpPtr.lock());
@@ -35,13 +86,12 @@ void Dispatcher::sendForTimer(weak_ptr<TcpConnection> weakTcpPtr, uint16_t total
     {
         *retryCount = retryCnt + 1;
         LOG_DEBUG << "Retry count: " << *retryCount;
-        tcpCodec_.send(conn, totalLength, type, frameCount, message, destination);
+        tcpCodec_.send(conn, totalLength, type, frameCount, message);
     }
     else
     {
         //TCP连接已断开，取消相关的定时器
-        //cancelTimerForDC(destination, frameCount);
-        //cancelTimerForDT(destination, type);
+        cancelTimer(frameCount);
         if (retryCnt >= RETRY_NUMBER)
         {
             conn->getLoop()->runInLoop(retryExceedHandler);
@@ -67,14 +117,19 @@ void Dispatcher::onStringMessage(const TcpConnectionPtr& conn,
     switch (frameHeader->type)
     {
         case CONFIRM:
-            confirm(); //receive confirm frame do nothing
+            confirm(message); //TODO:cancel timeid
             break;
-        case OPEN_MODE:
-            openMode(conn, frameHeader, message); //receive open_mode frame, return confirm frame and sql
+        case STATUS_MSG:
+            statusMessage(conn, frameHeader, message); //receive status frame, return confirm frame and sql
             break;
         case SENSOR_MSG:
             sensorMessage(conn, frameHeader, message);
             break;
+        case ERROR_MSG:
+            errorMessage(conn, frameHeader, message);
+            break;
+        case DEVID:
+            devid(conn, frameHeader, message);
         default:
             LOG_WARN << "UnKnow Message Type";
             break;
@@ -108,13 +163,16 @@ Input:          conn: TCP连接
 Output:         无
 Return:         无
 *************************************************/
-void Dispatcher::confirm()
+void Dispatcher::confirm(shared_ptr<u_char>& message)
 {
-
+    //获取所确认的帧计数,取消相应定时器
+    FrameMessage msg;
+    memcpy(&msg, get_pointer(message), sizeof(msg));
+    cancelTimer(msg.content.confirm.seq);
 }
 
 /*************************************************
-Description:    处理open/mode消息
+Description:    处理status消息
 Calls:          Dispatcher::
 Input:          conn: TCP连接
                 frameHeader: 接收帧头
@@ -122,18 +180,10 @@ Input:          conn: TCP连接
 Output:         无
 Return:         无
 *************************************************/
-<<<<<<< HEAD
-void Dispatcher::openModeMessage(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)
-=======
-<<<<<<< HEAD
-void Dispatcher::openModeMessage(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)
-=======
-void Dispatcher::openMode(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)
->>>>>>> 10bdc6d775d6dfa226aae615ec56460d73aa5ef1
->>>>>>> 36d5b7bcd3161db17025c5fe18cf5c7ba76a870a
+void Dispatcher::statusMessage(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)
 {
-    sendConfirmFrame(conn, frameHeader); //return confirm frame
-    openmodeCallback_(frameHeader, message); // messageHandler communicate with sql
+    //sendConfirmFrame(conn, frameHeader); //return confirm frame
+    statusCallback_(frameHeader, message); // messageHandler communicate with sql
 }
 
 /*************************************************
@@ -147,6 +197,18 @@ Return:         无
 *************************************************/
 void Dispatcher::sensorMessage(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)
 {
-    sendConfirmFrame(conn, frameHeader);
+    //sendConfirmFrame(conn, frameHeader);
     sensorCallback_(frameHeader, message);
+}
+
+void Dispatcher::errorMessage(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)
+{
+    //sendConfirmFrame(conn, frameHeader);
+    errorCallback_(frameHeader, message);
+}
+
+void Dispatcher::devidMessage(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)
+{
+    sendConfirmFrame(conn, frameHeader);
+    devidCallback_(conn,frameHeader, message);
 }

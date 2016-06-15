@@ -1,8 +1,8 @@
 /*************************************************
-Copyright: SmartLight
-Author: albert
-Date: 2015-12-17
-Description: 消息分发器，根据设备发来不同的帧做对应的处理
+Copyright: RemoteControl
+Author: zcdoyle
+Date: 2016-06-13
+Description：消息分发器，根据设备发来不同的帧做对应的处理
 **************************************************/
 
 #ifndef TCPSERVER_DISPATCHER_H
@@ -54,7 +54,7 @@ public:
     Return:         无
     *************************************************/
     explicit Dispatcher(EventLoop *loop,TCPCodec &tc, int timeoutSec) :
-                        loop_(loop),tcpCodec_(tc), timeoutSec_(timeoutSec) {}
+                        loop_(loop),tcpCodec_(tc), timeoutSec_(timeoutSec), frameCount_(0) {}
 
     /*************************************************
     Description:    设置各类消息的回调函数，用于消息分发
@@ -63,13 +63,12 @@ public:
     Output:         无
     Return:         无
     *************************************************/
-    inline void setCallbacks(const ConfiguraCallback& configCb,
-                     const MessageCallback& openmodeCb,
-                     const MessageCallback& sensorCb)
+    inline void setCallbacks(const MessageCallback& statusCb, const MessageCallback& sensorCb, const MessageCallback& errorCb, const MessageCallback& devidCb)
     {
-        configureCallback_ = configCb;
-        openmodeCallback_ = openmodeCb;
+        statusCallback_ = statusCb;
         sensorCallback_ = sensorCb;
+        errorCallback_ = errorCb;
+        devidCallback_ = devidCb;
     }
 
     /*************************************************
@@ -90,53 +89,42 @@ public:
     }
 
     void sendForTimer(weak_ptr<TcpConnection> weakTcpPtr, uint16_t totalLength, MessageType type, u_char * message,
-                             uint32_t destination, uint32_t frameCount, shared_ptr<int> retryCount, function<void ()> retryExceedHandler);
+                             uint32_t frameCount, shared_ptr<int> retryCount, function<void ()> retryExceedHandler);
 
     void onStringMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message, Timestamp);
     void sendConfirmFrame(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader);
-    uint32_t getAndSetFrameCount(ADDRESS destination, uint32_t increment);
 
-    void setTimerForDC(ADDRESS destination, TcpConnectionPtr& conn, uint16_t totalLength, MessageType type, u_char * message, function<void ()> retryExceedHandler);
-    void setTimerForDT(ADDRESS destination, TcpConnectionPtr& conn, uint16_t totalLength, MessageType type, u_char * message, function<void ()> retryExceedHandler);
+    void setTimer(TcpConnectionPtr& conn, uint16_t totalLength, MessageType type, u_char * message, function<void ()> retryExceedHandler);
 
-    bool cancelTimerForDC(ADDRESS destination, FRAMECOUNT count);
-    bool cancelTimerForDT(ADDRESS destination, MessageType type);
+    bool cancelTimer(FRAMECOUNT count);
 
 private:
-    void confirm(ADDRESS source, shared_ptr<u_char>& message);
-<<<<<<< HEAD
-    void openModeMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
-=======
-<<<<<<< HEAD
-    void openModeMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
-=======
-    void openMode(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
->>>>>>> 10bdc6d775d6dfa226aae615ec56460d73aa5ef1
->>>>>>> 36d5b7bcd3161db17025c5fe18cf5c7ba76a870a
+    void confirm(shared_ptr<u_char>& message);
+
+    void statusMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
     void sensorMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
+    void errorMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
+    void devidMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
 
     EventLoop* loop_;
     TCPCodec& tcpCodec_;
     int timeoutSec_;
 
-    /*由于帧格式设计不科学，有些回复帧没有确认帧编号，需要设置2种定时器
-        1、以信宿和帧计数区分的定时器
-        2、以信宿和帧类型区分的定时器
-    */
-    //以信宿和帧计数区分的定时器
+    //以帧计数区分的定时器
     MutexLock confirmMutex_;
-    map<ADDRESS, map<FRAMECOUNT, TimerId> > confirmTimer_;
+    //map<ADDRESS, map<FRAMECOUNT, TimerId> > confirmTimer_;
+    map<FRAMECOUNT, TimerId> confirmTimer_;
 
-    //以信宿和帧类型区分的定时器
-    MutexLock statusMutex_;
-    map<ADDRESS, map<MessageType, TimerId> > statusTimer_;
 
     //帧计数器
     MutexLock frameCountMutex_;
-    map<ADDRESS , FRAMECOUNT> frameCountMap_;
+    //map<ADDRESS , FRAMECOUNT> frameCountMap_;
+    int frameCount_;
 
-    MessageCallback openmodeCallback_;
+    MessageCallback statusCallback_;
     MessageCallback sensorCallback_;
+    MessageCallback errorCallback_;
+    MessageCallback devidCallback_;
 };
 
 
