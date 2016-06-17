@@ -16,11 +16,11 @@ Description: RPC客户端
 #include <muduo/net/protorpc/RpcChannel.h>
 #include <boost/bind.hpp>
 
-#include "SmartCity.ProtoMessage.pb.h"
+#include "AirPurifier.ProtoMessage.pb.h"
 
 
 using namespace muduo::net;
-using namespace SmartCity;
+using namespace AirPurifier;
 
 class RpcClient : boost::noncopyable
 {

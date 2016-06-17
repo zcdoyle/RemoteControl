@@ -24,7 +24,6 @@ using muduo::Timestamp;
 using namespace rapidjson;
 
 
-
 class TCPServer;
 class MySQLRpcParam;
 
@@ -79,7 +78,7 @@ private:
         }
     }
 
-    void JsonHandler::getConnbyDevID(const TcpConnectionPtr& jsonConn, TcpConnectionPtr& conn, int devid);
+    bool getConnbyDevID(const TcpConnectionPtr& jsonConn, TcpConnectionPtr& conn, uint32_t devid);
 
     void openControl(const TcpConnectionPtr& jsonConn, const Document& jsonObject);
     void modeControl(const TcpConnectionPtr& jsonConn, const Document& jsonObject);

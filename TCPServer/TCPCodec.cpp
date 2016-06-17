@@ -11,6 +11,7 @@ Description: 编码解码TCP信息帧
 #include "string.h"
 #include <sys/time.h>
 #include "aes.h"
+#include "crc.h"
 unsigned char key[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};	// 密钥
 
 /*************************************************
@@ -54,11 +55,11 @@ void TCPCodec::onMessage(const TcpConnectionPtr& conn, Buffer *buf, Timestamp re
             shared_ptr<u_char > message((u_char *)malloc(length - HeaderLength));
             memcpy(get_pointer(message), (u_char *)data + HeaderLength, length - HeaderLength);
 
-            //检查帧头CRC16校验信息
-            uint16_t crc16 = CRC16((u_char *)get_pointer(frameHeader), HeaderLength);
-            //检查数据CRC32校验，然后解密
-            uint16_t crc32 = CRC32(get_pointer(message),length - HeaderLength);
-            bool crc16_ok,crc32_ok;
+//            //检查帧头CRC16校验信息
+//            uint16_t crc16 = CRC16((u_char *)get_pointer(frameHeader), HeaderLength);
+//            //检查数据CRC32校验，然后解密
+//            uint16_t crc32 = CRC32(get_pointer(message),length - HeaderLength);
+            bool crc16_ok = true,crc32_ok = true;
 
             if(!crc16_ok)
             {
@@ -79,7 +80,8 @@ void TCPCodec::onMessage(const TcpConnectionPtr& conn, Buffer *buf, Timestamp re
                 //解密这一帧
                 Decrypt(get_pointer(message), key, length-HeaderLength);
                 //打印这一帧，调试用
-                printFrame("Receive", get_pointer(frameHeader), get_pointer(message), (size_t)(length - HeaderLength));
+                size_t messageLenth = frameHeader->olen;
+                printFrame("Receive", get_pointer(frameHeader), get_pointer(message), messageLenth);
 
                 //收到一个完整的帧，交给回调函数处理
                 buf->retrieve(length); //将buf中length长度的内容清掉
@@ -106,7 +108,7 @@ Input:          conn: Tcp连接，
 Output:         无
 Return:         无
 *************************************************/
-void TCPCodec::send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,uint32_t seq, u_char * message)
+void TCPCodec::send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,uint16_t seq, u_char * message)
 {
     int mLength=totalLength - HeaderLength; //信息字加密前的长度
     int encryLength = computeEncryptedSize(mLength);   //信息字加密后的长度
@@ -123,10 +125,12 @@ void TCPCodec::send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,u
     sendFrame.seq = seq;
 
     sendFrame.hard = 0;
+    sendFrame.headerCheck = 0;
+    sendFrame.messageCheck = 0;
 
-    //计算CRC16,CRC32校验
-    sendFrame.headerCheck = CRC16((u_char *)&sendFrame, HeaderLength);
-    sendFrame.messageCheck = CRC32(message, mLength);
+//    //计算CRC16,CRC32校验
+//    sendFrame.headerCheck = CRC16((u_char *)&sendFrame, HeaderLength);
+//    sendFrame.messageCheck = CRC32(message, mLength);
 
     //对message加密
     expandText(message, get_pointer(encryMessage), mLength, encryLength);
@@ -137,6 +141,7 @@ void TCPCodec::send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,u
     buf.append(get_pointer(encryMessage), encryLength);
     conn->send(&buf);
 
+    LOG_DEBUG<< "send done";
     //打印帧内容，调试用
     printFrame("Send",&sendFrame, message, mLength);
 }
@@ -153,8 +158,7 @@ Return:         无
 void TCPCodec::printFrame(std::string tag,FrameHeader *frame, u_char* message, size_t messageLen)
 {
     char headerLine[256];
-    sprintf(headerLine, "%s Header: Header:%02x,length:%d,Type:%02x,
-                        "frameCount:%d, MessageLength:%d, headerCheck:%02x, messageCheck:%02x", tag.c_str(),
+    sprintf(headerLine, "%s Header: Header:%08x,length:%d,Type:%d,frameCount:%d, MessageLength:%ld, headerCheck:%d, messageCheck:%d", tag.c_str(),
             frame->head, frame->len, frame->type, frame->seq, messageLen, frame->headerCheck, frame->messageCheck);
 
     std::string mess = tag;

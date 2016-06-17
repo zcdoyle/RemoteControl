@@ -9,8 +9,8 @@ Description：TCP 收发模块
 #define TCPSERVER_H
 
 #include "TCPCodec.h"
-#include "ProtobufCodec.h"
-#include "SmartCity.ProtoMessage.pb.h" //TODO：Update
+#include "protobuf/ProtobufCodec.h"
+#include "protobuf/AirPurifier.ProtoMessage.pb.h"
 #include "dispatcher.h"
 #include "MessageHandler.h"
 #include "configuration.h"
@@ -36,9 +36,8 @@ Description：TCP 收发模块
 #include <vector>
 #include <stdio.h>
 
-
 using namespace muduo::net;
-using namespace SmartCity; //TODO:Update
+using namespace AirPurifier;
 using boost::shared_ptr;
 using boost::bind;
 using std::map;
@@ -53,8 +52,6 @@ using muduo::TimeZone;
 
 class TCPServer : boost::noncopyable
 {
-    typedef uint32_t DEVID;
-
     typedef shared_ptr<TcpClient> TcpClientPtr;
     typedef vector<ProtoMessage> Messages;
     typedef ThreadLocalSingleton<map<ConnectionType, TcpConnectionPtr> > LocalConnections;
@@ -72,7 +69,7 @@ public:
     Output:         无
     Return:         该设备对应的TCP连接
     *************************************************/
-    inline TcpConnectionPtr getDevConnection(int devid)
+    inline TcpConnectionPtr getDevConnection(uint32_t devid)
     {
         MutexLockGuard lock(devConnMutex_);
         map<DEVID, TcpConnectionPtr>::const_iterator it = devToConn_.find(devid);
@@ -89,11 +86,11 @@ public:
     Output:         无
     Return:         无
     ***************************************************/
-    inline void sendWithTimer(TcpConnectionPtr conn, MessageType type, uint16_t totalLength, shared_ptr<u_char> message)
+    inline void sendWithTimer(DEVID devid, TcpConnectionPtr conn, MessageType type, uint16_t totalLength, shared_ptr<u_char> message)
     {
         weak_ptr<TcpConnection> weakTcpPtr(conn);
         function<void ()> retryExceedHandler = bind(&TCPServer::retryExceedMaxNumer, this, weakTcpPtr);
-        dispatcher_.setTimer(conn, totalLength, type, get_pointer(message), retryExceedHandler);
+        dispatcher_.setTimer(devid, conn, totalLength, type, get_pointer(message), retryExceedHandler);
     }
 
     inline void retryExceedMaxNumer(weak_ptr<TcpConnection> weakConn)
@@ -106,6 +103,21 @@ public:
         }
     }
 
+    /***************************************************
+    Description:    更新设备连接信息
+    Input:          devId：设备id
+                    type：设备类型
+                    devVec:设备唯一号数组
+                    conn：对应设备的TCP连接
+    Output:         无
+    Return:         设备id
+    ***************************************************/
+    inline void updateConnectionInfo(const TcpConnectionPtr& conn,uint32_t devid)
+    {
+        MutexLockGuard lock(devConnMutex_);
+        devToConn_[devid] = conn;
+        connHasDev_[conn] = devid;
+    }
     void clearConnectionInfo(const TcpConnectionPtr conn);
 
     Dispatcher dispatcher_;
@@ -118,22 +130,6 @@ private:
     void onHBaseProxyConnection(const TcpConnectionPtr& conn);
     void connectRedis();
     void threadInit(EventLoop* loop);
-
-    /***************************************************
-    Description:    更新设备连接信息
-    Input:          devId：设备id
-                    type：设备类型
-                    devVec:设备唯一号数组
-                    conn：对应设备的TCP连接
-    Output:         无
-    Return:         设备id
-    ***************************************************/
-    inline void updateConnectionInfo(TcpConnectionPtr& conn,int devid)
-    {
-        MutexLockGuard lock(devConnMutex_);
-        devToConn_[devid] = conn;
-        connHasDev_[conn] = devid;
-    }
 
     const Configuration& config_;                               //配置内容
     EventLoop* loop_;                                           //时间循环

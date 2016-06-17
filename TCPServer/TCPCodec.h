@@ -50,7 +50,7 @@ public:
     Output:         无
     Return:         无
     *************************************************/
-    explicit  TCPCodec(int dest,const StringMessageCallback& cb):
+    explicit  TCPCodec(const StringMessageCallback& cb):
         dispatcherCallback_(cb)
     {}
 
@@ -58,7 +58,7 @@ public:
 
 private:
 
-    void send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,uint32_t seq, u_char * message);
+    void send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,uint16_t seq, u_char * message);
 
     void printFrame(std::string tag,FrameHeader *frame, u_char* message, size_t messageLen);
     void skipWrongFrame(Buffer *buf);

@@ -97,7 +97,7 @@ Return:         无
 *************************************************/
 Configuration::Configuration()
 {
-    ifstream configFile("/home/albert/SmartCity/TCPServer/build/bin/TCPServer.cfg", std::ios::in);
+    ifstream configFile("/home/zcdoyle/pro/air/RemoteControl/TCPServer/build/bin/TCPServer.cfg", std::ios::in);
 //    ifstream configFile("/root/SmartCity/TCPServer/build/bin/TCPServer.cfg", std::ios::in);
     char line[LINELENGTH];
 

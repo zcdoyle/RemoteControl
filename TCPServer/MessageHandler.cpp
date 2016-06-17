@@ -36,11 +36,13 @@ Input:          DeviceID: 设备硬件编号
                 modeStatus: 模式状态
                 windSpeed: 风速档位
                 timing: 剩余定时情况
+                childlock:儿童锁状态
+                errorreminder:故障提醒状态
                 time: 采集时间
 Output:         无
 Return:         无
 *************************************************/
-void MessageHandler::updateStatusDatainRedis(uint32_t DeviceID, uint32_t switchStatus, uint32_t modeStatus, uint32_t windSpeed, uint32_t timing, uint32_t ver, uint32_t childLock, uint32_t errorReminder, string timeStr)
+void MessageHandler::updateStatusDatainRedis(uint32_t DeviceID, uint32_t switchStatus, uint32_t modeStatus, uint32_t windSpeed, uint32_t timing, uint32_t ver, uint32_t childLock, uint32_t errorReminder, char* timeStr)
 {
     char command[256];
     sprintf(command, "HMSET STATUS%d switch %d mode %d windspeed %d timing %d ver %d childlock %d errorreminder %d time %s",
@@ -60,10 +62,10 @@ Input:          DeviceID: 设备硬件编号
 Output:         无
 Return:         无
 *************************************************/
-void MessageHandler::updateSensorDatainRedis(uint32_t DeviceID, uint16_t hcho, uint16_t pm2p5, uint16_t temperature, uint16_t humidity, string timeStr)
+void MessageHandler::updateSensorDatainRedis(uint32_t DeviceID, uint16_t hcho, uint16_t pm2p5, uint16_t temperature, uint16_t humidity, char* timeStr)
 {
     char command[256];
-    sprintf(command, "HMSET SENSOR%d temperature %f humidity %f pm2p5 %f hcho %f time %s",
+    sprintf(command, "HMSET SENSOR%d hcho %f pm2p5 %f temperature %f humidity %f time %s",
             DeviceID, temperature / 1.0, humidity / 1.0, pm2p5 / 1.0, hcho / 1.0, timeStr);
     RedisReply reply((redisReply*)redisCommand(tcpserver_->redisConn_,command));
 }
@@ -80,10 +82,10 @@ Input:          DeviceID: 设备硬件编号
 Output:         无
 Return:         无
 *************************************************/
-void MessageHandler::updateErrorDatainRedis(uint32_t DeviceID, uint32_t fsc, uint32_t ibc, uint32_t ibe, float uve, string timeStr)
+void MessageHandler::updateErrorDatainRedis(uint32_t DeviceID, uint32_t fsc, uint32_t ibc, uint32_t ibe, uint32_t uve, char* timeStr)
 {
     char command[256];
-    sprintf(command, "HMSET SETTING%d fsc %d ibc %d ibe %d uve %f time %s",
+    sprintf(command, "HMSET ERROR%d fsc %d ibc %d ibe %d uve %d time %s",
             DeviceID, fsc, ibc, ibe, uve, timeStr);
     RedisReply reply((redisReply*)redisCommand(tcpserver_->redisConn_,command));
 }
@@ -96,7 +98,7 @@ Output:         data: 日期(如 2016-1-5)
                 time: 时间（如 12:30:12）
 Return:         无
 *************************************************/
-void MessageHandler::getMySQLDateTime(char* date, char* time)
+void MessageHandler::getMySQLDateTime(char* date, char* timestr)
 {
     //时间函数不是线程安全的, 利用互斥锁保护
     MutexLockGuard lock(timeMutex_);
@@ -111,7 +113,7 @@ void MessageHandler::getMySQLDateTime(char* date, char* time)
     int hour = p->tm_hour;
     int min = p->tm_min;
     int sec = p->tm_sec;
-    sprintf(time, "%02d:%02d:%02d", hour, min, sec);
+    sprintf(timestr, "%02d:%02d:%02d", hour, min, sec);
 }
 
 /*************************************************
@@ -122,7 +124,7 @@ Output:         data: 日期(如 20160105)
                 time: 时间（如 1230）
 Return:         无
 *************************************************/
-void MessageHandler::getHBaseDateTime(char* date, char* time)
+void MessageHandler::getHBaseDateTime(char* date, char* timestr)
 {
     //时间函数不是线程安全的, 利用互斥锁保护
     MutexLockGuard lock(timeMutex_);
@@ -136,7 +138,7 @@ void MessageHandler::getHBaseDateTime(char* date, char* time)
 
     int hour = p->tm_hour;
     int min = p->tm_min;
-    sprintf(time, "%02d%02d", hour, min);
+    sprintf(timestr, "%02d%02d", hour, min);
 }
 
 /*************************************************
@@ -146,7 +148,7 @@ Input:          frameHeader: 帧头指针
 Output:         time: 201606131946
 Return:         无
 *************************************************/
-void MessageHandler::getRedisDateTime(char* time)
+void MessageHandler::getRedisDateTime(char* timestr)
 {
     //时间函数不是线程安全的, 利用互斥锁保护
     MutexLockGuard lock(timeMutex_);
@@ -156,7 +158,7 @@ void MessageHandler::getRedisDateTime(char* time)
     time(&timep);
     p=gmtime(&timep);
 
-    sprintf(time, "%04d%02d%02d%02d%02d", 1900+p->tm_year, 1+p->tm_mon, p->tm_mday,p->tm_hour,p->tm_min);
+    sprintf(timestr, "%04d%02d%02d%02d%02d", 1900+p->tm_year, 1+p->tm_mon, p->tm_mday,p->tm_hour,p->tm_min);
 }
 
 /*************************************************
@@ -176,9 +178,6 @@ void MessageHandler::onStatusMessage(shared_ptr<FrameHeader>& frameHeader, share
 
     senId = frameHeader->hard;
 
-    ProtoMessage protoMessage;
-    initializeHBaseProto(frameHeader, message, protoMessage, STATUS_MSG, senId);
-
     isopen = msg.content.status.isopen;
     mode = msg.content.status.mode;
     wspd = msg.content.status.wspd;
@@ -187,22 +186,26 @@ void MessageHandler::onStatusMessage(shared_ptr<FrameHeader>& frameHeader, share
     time = msg.content.status.time;
     ver = msg.content.status.ver;
 
-    protoMessage.set_devnum(senId);
-    ProtoMessage_Environment* status = protoMessage.mutable_status();
-    status->set_switch(isopen);
-    status->set_mode(mode);
-    status->set_wspd(wspd);
-    status->set_click(click);
-    status->set_ermd(ermd);
-    status->set_time(time);
-    status->set_ver(ver);
-    tcpserver_->sendProtoMessage(protoMessage, HBase);
+//    ProtoMessage protoMessage;
+//    initializeHBaseProto(protoMessage, STATUS_MSG, senId);
+//    protoMessage.set_devid(senId);
+//    ProtoMessage_Status* status = protoMessage.mutable_status();
+//    status->set_open(isopen);
+//    status->set_mode(mode);
+//    status->set_wspd(wspd);
+//    status->set_click(click);
+//    status->set_ermd(ermd);
+//    status->set_time(time);
+//    status->set_ver(ver);
+//    tcpserver_->sendProtoMessage(protoMessage, HBase);
+
     //在Redis更新设备状态信息
     char timeStr[16];
     getRedisDateTime(timeStr);
     updateStatusDatainRedis(senId,isopen,mode,wspd,time,ver,click,ermd,timeStr);
 
-    LOG_DEBUG <<" isopen: " << isopen <<
+    LOG_DEBUG <<"STATUS: " << senId <<
+                " isopen: " << isopen <<
                 " mode: " << mode <<
                 " wspd: " << wspd <<
                 " click: " << click <<
@@ -230,21 +233,21 @@ void MessageHandler::onSensorMessage(shared_ptr<FrameHeader>& frameHeader, share
 
     senId = frameHeader->hard;
 
-    ProtoMessage protoMessage;
-    initializeHBaseProto(frameHeader, message, protoMessage, SENSOR_MSG, senId);
-
     hcho = msg.content.sensor.hcho;
     pm2p5 = msg.content.sensor.pm;
     temperature = msg.content.sensor.temp;
     humidity = msg.content.sensor.humi;
 
-    protoMessage.set_devnum(senId);
-    ProtoMessage_Environment* sensor = protoMessage.mutable_sensor();
-    sensor->set_hcho(hcho / 1.0); //TODO why / 10.0
-    sensor->set_pm2p5(pm2p5 / 1.0);
-    sensor->set_temperature(temperature / 1.0);
-    sensor->set_humidity(humidity / 1.0);
-    tcpserver_->sendProtoMessage(protoMessage, HBase);
+//    ProtoMessage protoMessage;
+//    initializeHBaseProto(protoMessage, SENSOR_MSG, senId);
+
+//    protoMessage.set_devid(senId);
+//    ProtoMessage_Sensor* sensor = protoMessage.mutable_sensor();
+//    sensor->set_hcho(hcho / 1.0); //TODO why / 10.0
+//    sensor->set_pm2p5(pm2p5 / 1.0);
+//    sensor->set_temperature(temperature / 1.0);
+//    sensor->set_humidity(humidity / 1.0);
+//    tcpserver_->sendProtoMessage(protoMessage, HBase);
 
     //在Redis更新设备信息
     char timeStr[16];
@@ -260,7 +263,7 @@ void MessageHandler::onSensorMessage(shared_ptr<FrameHeader>& frameHeader, share
 
 /*************************************************
 Description:    接收到传感器信息帧
-Calls:          Dispatcher::SensorMessage()
+Calls:          Dispatcher::ErrorMessage()
 Input:          frameHeader: 帧头指针
                 message: 消息字指针
 Output:         无
@@ -268,28 +271,28 @@ Return:         无
 *************************************************/
 void MessageHandler::onErrorMessage(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message)
 {
-    uint16_t fsc, ibc, ibe, uve;
+    uint32_t fsc, ibc, ibe, uve;
     uint32_t senId;
     FrameMessage msg;
     memcpy(&msg, get_pointer(message), sizeof(msg));
 
     senId = frameHeader->hard;
 
-    ProtoMessage protoMessage;
-    initializeHBaseProto(frameHeader, message, protoMessage, ERROR_MSG, senId);
-
     fsc = msg.content.error.fsc;
     ibc = msg.content.error.ibc;
     ibe = msg.content.error.ibe;
     uve = msg.content.error.uve;
 
-    protoMessage.set_devnum(senId);
-    ProtoMessage_Environment* error = protoMessage.mutable_error();
-    error->set_fsc(fsc);
-    error->set_ibc(ibc);
-    error->set_ibe(ibe);
-    error->set_uve(uve);
-    tcpserver_->sendProtoMessage(protoMessage, HBase);
+//    ProtoMessage protoMessage;
+//    initializeHBaseProto(protoMessage, ERROR_MSG, senId);
+
+//    protoMessage.set_devid(senId);
+//    ProtoMessage_Error* error = protoMessage.mutable_error();
+//    error->set_fsc(fsc);
+//    error->set_ibc(ibc);
+//    error->set_ibe(ibe);
+//    error->set_uve(uve);
+//    tcpserver_->sendProtoMessage(protoMessage, HBase);
 
     //在Redis更新设备信息
     char timeStr[16];
@@ -305,16 +308,18 @@ void MessageHandler::onErrorMessage(shared_ptr<FrameHeader>& frameHeader, shared
 
 /*************************************************
 Description:    收到配置信息帧，处理信息
-Calls:          Dispatcher::devid()
+Calls:          Dispatcher::devidMessage()
 Input:          frameHeader: 帧头指针
                 message: 消息字指针
 Output:         无
 Return:         无
 *************************************************/
-void MessageHandler::onDevidMessage(const TcpConnectionPtr &conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message)
+void MessageHandler::onDevidMessage(const TcpConnectionPtr &conn, shared_ptr<FrameHeader>& frameHeader)
 {
     uint32_t devid = frameHeader->hard;
     tcpserver_->updateConnectionInfo(conn,devid);
+
+    LOG_DEBUG << "Devid: " << devid;
 }
 
 /*************************************************
@@ -327,13 +332,12 @@ Input:          frameHeader: 帧头指针
 Output:         无
 Return:         无
 *************************************************/
-void MessageHandler::initializeHBaseProto(shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char> message,
-                                              ProtoMessage& protoMessage, MessageType type, int devId)
+void MessageHandler::initializeHBaseProto(ProtoMessage& protoMessage, MessageType type, int devId)
 {
     char date[16], time[16];
-    getHBaseDateTime(frameHeader, date, time);
+    getHBaseDateTime(date, time);
     protoMessage.set_messagetype(type);
-    protoMessage.set_devnum(devId);
+    protoMessage.set_devid(devId);
     protoMessage.set_date(date);
     protoMessage.set_time(time);
 }

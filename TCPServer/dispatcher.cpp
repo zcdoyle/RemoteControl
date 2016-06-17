@@ -15,29 +15,28 @@ Description：消息分发器，根据设备发来不同的帧做对应的处理
 /*************************************************
 Description:    设置状态回复定时器，以帧计数区分
 Calls:          TCPServer::
-Input:          destination: 信宿
-                conn：TCP连接
+Input:          conn：TCP连接
                 totalLength：帧总长度
                 tpye：帧类型
                 message：帧消息字
 Output:         无
 Return:         无
 *************************************************/
-void Dispatcher::setTimer(TcpConnectionPtr& conn, uint16_t totalLength, MessageType type, u_char * message, function<void ()> retryExceedHandler)
+void Dispatcher::setTimer(DEVID devid, TcpConnectionPtr& conn, uint16_t totalLength, MessageType type, u_char * message, function<void ()> retryExceedHandler)
 {
     //帧计数加1，并取消相关定时器
-    uint32_t count = frameCount_++; //TODO:这样做是否合理，原来是看是否存在这个信宿，不存在为0,存在累加；现在就是从0开始累加
+    uint16_t count = getAndSetFrameCount(devid, 1);
 
     shared_ptr<int> retryCount(new int);
     *retryCount = 0;
     weak_ptr<TcpConnection> weakTcpPtr(conn);
-    function<void()> sendFunc = bind(&Dispatcher::sendForTimer,this, weakTcpPtr, totalLength, type, message, count, retryCount,retryExceedHandler);
+    function<void()> sendFunc = bind(&Dispatcher::sendForTimer,this, weakTcpPtr, totalLength, type, message, devid, count, retryCount,retryExceedHandler);
     //创建定时器，并记录id
     TimerId timerId = loop_->runEvery(timeoutSec_, sendFunc);
-    cancelTimer(count);
+    cancelTimer(devid, count);
     {
         MutexLockGuard lock(confirmMutex_);
-        confirmTimer_[count] = timerId;
+        confirmTimer_[devid][count] = timerId;
     }
     //立即发送
     sendFunc();
@@ -46,22 +45,26 @@ void Dispatcher::setTimer(TcpConnectionPtr& conn, uint16_t totalLength, MessageT
 /*************************************************
 Description:    取消帧计数区分的定时器
 Calls:          Dispatcher::
-Input:          destination: 信宿
+Input:          devid: 硬件编号
                 count: 帧计数
 Output:         无
 Return:         是否设置了定时器
 *************************************************/
-bool Dispatcher::cancelTimer(FRAMECOUNT count)
+bool Dispatcher::cancelTimer(DEVID devid, FRAMECOUNT count)
 {
     //查找对应元素的迭代器
     MutexLockGuard lock(confirmMutex_);
-    map<FRAMECOUNT, TimerId>::iterator it = confirmTimer_.find(count);
+    map<DEVID, map<FRAMECOUNT, TimerId> >::iterator it = confirmTimer_.find(devid);
     if(it != confirmTimer_.end())
     {
-        //找到后取消定时器，删除对应元素
-        loop_->cancel(it->second);
-        confirmTimer_.erase(count);
-        return true;
+        map<FRAMECOUNT, TimerId>::iterator ii = it->second.find(count);
+        if(ii != it->second.end())
+        {
+            //找到后取消定时器，删除对应元素
+            loop_->cancel(ii->second);
+            it->second.erase(count);
+            return true;
+        }
     }
     return false;
 }
@@ -72,13 +75,13 @@ Input:          conn: TCP连接
                 totalLength: 帧总长度
                 type: 帧类型
                 message: 帧消息字
-                destination: 信宿
-                frameCount：当前帧的帧计数，保存该帧计数用于超时重发
+                devid: 硬件编号
+                count：当前帧的帧计数，保存该帧计数用于超时重发
 Output:         无
 Return:         无
 *************************************************/
 void Dispatcher::sendForTimer(weak_ptr<TcpConnection> weakTcpPtr, uint16_t totalLength, MessageType type, u_char * message,
-                         uint32_t frameCount, shared_ptr<int> retryCount,function<void ()> retryExceedHandler)
+                         DEVID devid, FRAMECOUNT count, shared_ptr<int> retryCount,function<void ()> retryExceedHandler)
 {
     int retryCnt = *retryCount;
     TcpConnectionPtr conn(weakTcpPtr.lock());
@@ -86,12 +89,12 @@ void Dispatcher::sendForTimer(weak_ptr<TcpConnection> weakTcpPtr, uint16_t total
     {
         *retryCount = retryCnt + 1;
         LOG_DEBUG << "Retry count: " << *retryCount;
-        tcpCodec_.send(conn, totalLength, type, frameCount, message);
+        tcpCodec_.send(conn, totalLength, type, count, message);
     }
     else
     {
         //TCP连接已断开，取消相关的定时器
-        cancelTimer(frameCount);
+        cancelTimer(devid, count);
         if (retryCnt >= RETRY_NUMBER)
         {
             conn->getLoop()->runInLoop(retryExceedHandler);
@@ -117,7 +120,7 @@ void Dispatcher::onStringMessage(const TcpConnectionPtr& conn,
     switch (frameHeader->type)
     {
         case CONFIRM:
-            confirm(message); //TODO:cancel timeid
+            confirm(frameHeader->hard, message);
             break;
         case STATUS_MSG:
             statusMessage(conn, frameHeader, message); //receive status frame, return confirm frame and sql
@@ -129,13 +132,42 @@ void Dispatcher::onStringMessage(const TcpConnectionPtr& conn,
             errorMessage(conn, frameHeader, message);
             break;
         case DEVID_MSG:
-            devid(conn, frameHeader, message);
+            devidMessage(conn, frameHeader);
         default:
             LOG_WARN << "UnKnow Message Type";
             break;
     }
 }
 
+/*************************************************
+Description:    根据信源获取并设置帧计数
+Calls:          Dispatcher::
+Input:          devid: 硬件编号
+                increment: 帧计数增量
+Output:         无
+Return:         设置后的帧计数
+*************************************************/
+uint16_t Dispatcher::getAndSetFrameCount(DEVID devid, uint16_t increment)
+{
+    uint16_t frameCount;
+    {
+        MutexLockGuard lock(frameCountMutex_);
+        if(frameCountMap_.find(devid) == frameCountMap_.end())
+        {
+            //不存在当前信源
+            frameCount = 0;
+            frameCountMap_[devid] = 0;
+        }
+        else
+        {
+
+            frameCountMap_[devid] += increment;
+            frameCount = frameCountMap_[devid];;
+        }
+    }
+
+    return frameCount;
+}
 
 /*************************************************
 Description:    构造并发送确认帧
@@ -150,7 +182,7 @@ void Dispatcher::sendConfirmFrame(const TcpConnectionPtr& conn, shared_ptr<Frame
     u_char message[2]; //confirm frame 16 bit
     MessageConstructor::confirmFrame(message, frameHeader->seq); // messageConstructor make the confirm frame
     uint16_t ConfirmFrameLength = HeaderLength + 2;
-    send(conn, ConfirmFrameLength, CONFIRM, frameHeader, message);
+    send(conn, ConfirmFrameLength, CONFIRM, message, frameHeader->hard);
 }
 
 
@@ -163,12 +195,12 @@ Input:          conn: TCP连接
 Output:         无
 Return:         无
 *************************************************/
-void Dispatcher::confirm(shared_ptr<u_char>& message)
+void Dispatcher::confirm(DEVID devid, shared_ptr<u_char>& message)
 {
     //获取所确认的帧计数,取消相应定时器
     FrameMessage msg;
     memcpy(&msg, get_pointer(message), sizeof(msg));
-    cancelTimer(msg.content.confirm.seq);
+    cancelTimer(devid, msg.content.confirm.seq);
 }
 
 /*************************************************
@@ -207,8 +239,8 @@ void Dispatcher::errorMessage(const TcpConnectionPtr& conn, shared_ptr<FrameHead
     errorCallback_(frameHeader, message);
 }
 
-void Dispatcher::devidMessage(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)
+void Dispatcher::devidMessage(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader)
 {
     sendConfirmFrame(conn, frameHeader);
-    devidCallback_(conn,frameHeader, message);
+    devidCallback_(conn,frameHeader);
 }

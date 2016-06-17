@@ -41,7 +41,7 @@ void MessageConstructor::openControl(u_char* message,int opencontrol)
 /*************************************************
 Description:    设备模式控制信息帧
 Input:          message：需要填入帧内容的空间
-                mode：模式
+                opencontrol：模式
 Output:         设备模式控制帧
 Return:         无
 *************************************************/
@@ -70,7 +70,7 @@ void MessageConstructor::settingControl(u_char* message,int childlockcontrol,int
     memcpy(message, &msg, sizeof(msg));
 }
 
-void MessageConstructor::modeControl(u_char* message,int updatecontrol)
+void MessageConstructor::updateControl(u_char* message,int updatecontrol)
 {
     FrameMessage msg;
     msg.content.update.update = updatecontrol;

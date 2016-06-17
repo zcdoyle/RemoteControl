@@ -42,6 +42,7 @@ class Dispatcher : boost::noncopyable
 {
 public:
     typedef function<void (shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message)> MessageCallback;
+    typedef function<void (const TcpConnectionPtr&conn, shared_ptr<FrameHeader>& frameHeader)> DevIDCallback;
 
     /*************************************************
     Description:    Dispatcher构造函数，设置时间循环和编码解码
@@ -53,7 +54,7 @@ public:
     Return:         无
     *************************************************/
     explicit Dispatcher(EventLoop *loop,TCPCodec &tc, int timeoutSec) :
-                        loop_(loop),tcpCodec_(tc), timeoutSec_(timeoutSec), frameCount_(0) {}
+                        loop_(loop),tcpCodec_(tc), timeoutSec_(timeoutSec){}
 
     /*************************************************
     Description:    设置各类消息的回调函数，用于消息分发
@@ -62,7 +63,7 @@ public:
     Output:         无
     Return:         无
     *************************************************/
-    inline void setCallbacks(const MessageCallback& statusCb, const MessageCallback& sensorCb, const MessageCallback& errorCb, const MessageCallback& devidCb)
+    inline void setCallbacks(const MessageCallback& statusCb, const MessageCallback& sensorCb, const MessageCallback& errorCb, const DevIDCallback& devidCb)
     {
         statusCallback_ = statusCb;
         sensorCallback_ = sensorCb;
@@ -81,29 +82,30 @@ public:
     Output:         无
     Return:         无
     *************************************************/
-    inline void send(const TcpConnectionPtr& conn, uint16_t totalLength, MessageType type,shared_ptr<FrameHeader>& frameHeader, u_char * message)
+    inline void send(const TcpConnectionPtr& conn, uint16_t totalLength, MessageType type, u_char * message, DEVID devid)
     {
-        uint16_t seq = frameHeader->seq + 1; //帧计数加1
+        uint16_t seq = getAndSetFrameCount(devid, 1); //帧计数加1
         tcpCodec_.send(conn, totalLength, type, seq, message);
     }
 
     void sendForTimer(weak_ptr<TcpConnection> weakTcpPtr, uint16_t totalLength, MessageType type, u_char * message,
-                             uint32_t frameCount, shared_ptr<int> retryCount, function<void ()> retryExceedHandler);
+                             DEVID devid, FRAMECOUNT count, shared_ptr<int> retryCount, function<void ()> retryExceedHandler);
 
     void onStringMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message, Timestamp);
     void sendConfirmFrame(const TcpConnectionPtr& conn, shared_ptr<FrameHeader>& frameHeader);
+    uint16_t getAndSetFrameCount(DEVID devid, uint16_t increment);
 
-    void setTimer(TcpConnectionPtr& conn, uint16_t totalLength, MessageType type, u_char * message, function<void ()> retryExceedHandler);
+    void setTimer(DEVID devid, TcpConnectionPtr& conn, uint16_t totalLength, MessageType type, u_char * message, function<void ()> retryExceedHandler);
 
-    bool cancelTimer(FRAMECOUNT count);
+    bool cancelTimer(DEVID devid, FRAMECOUNT count);
 
 private:
-    void confirm(shared_ptr<u_char>& message);
+    void confirm(DEVID devid, shared_ptr<u_char>& message);
 
     void statusMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
     void sensorMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
     void errorMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
-    void devidMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader, shared_ptr<u_char>& message);
+    void devidMessage(const TcpConnectionPtr&, shared_ptr<FrameHeader>& frameHeader);
 
     EventLoop* loop_;
     TCPCodec& tcpCodec_;
@@ -111,17 +113,17 @@ private:
 
     //以帧计数区分的定时器
     MutexLock confirmMutex_;
-    map<FRAMECOUNT, TimerId> confirmTimer_;
+    map<DEVID, map<FRAMECOUNT, TimerId> > confirmTimer_;
 
 
     //帧计数器
     MutexLock frameCountMutex_;
-    int frameCount_;
+    map<DEVID , FRAMECOUNT> frameCountMap_;
 
     MessageCallback statusCallback_;
     MessageCallback sensorCallback_;
     MessageCallback errorCallback_;
-    MessageCallback devidCallback_;
+    DevIDCallback devidCallback_;
 };
 
 

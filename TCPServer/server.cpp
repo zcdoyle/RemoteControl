@@ -82,7 +82,7 @@ void TCPServer::start()
     jsonMessageServer_.start();
 
     connectRedis();
-    rpcClient_.connect(); //TODO:RPCClient usage?
+    //rpcClient_.connect(); //TODO:RPCClient usage?
 
 //    Http::post(config_.smsAddress_, config_.smsPort_, config_.smsPage, "msg=TCPServer模块启动 【智慧路灯】");
 }
@@ -231,23 +231,23 @@ Return:         无
 ***************************************************/
 void TCPServer::threadInit(EventLoop* loop)
 {
-    //连接MySQL代理服务器
-    TcpClientPtr mysqlProxyPtr(new TcpClient(loop, InetAddress(config_.MySQLProxyAddress_, config_.MySQLProxyPort_), "MySQLProxy"));
-    LocalClients::instance()[MySQL] = mysqlProxyPtr;
-    mysqlProxyPtr->setConnectionCallback(bind(&TCPServer::onMySQLProxyConnection, this, _1));
-    mysqlProxyPtr->enableRetry();
-    mysqlProxyPtr->connect();
-    UnSendMessages::instance()[MySQL].clear();
+//    //连接MySQL代理服务器
+//    TcpClientPtr mysqlProxyPtr(new TcpClient(loop, InetAddress(config_.MySQLProxyAddress_, config_.MySQLProxyPort_), "MySQLProxy"));
+//    LocalClients::instance()[MySQL] = mysqlProxyPtr;
+//    mysqlProxyPtr->setConnectionCallback(bind(&TCPServer::onMySQLProxyConnection, this, _1));
+//    mysqlProxyPtr->enableRetry();
+//    mysqlProxyPtr->connect();
+//    UnSendMessages::instance()[MySQL].clear();
 
-    //连接Hbase代理服务器
-    TcpClientPtr hbaseProxyPtr(new TcpClient(loop, InetAddress(config_.HBaseProxyAddress_, config_.HBaseProxyPort_), "HBaseProxy"));
-    LocalClients::instance()[HBase] = hbaseProxyPtr;
-    hbaseProxyPtr->setConnectionCallback(
-            bind(&TCPServer::onHBaseProxyConnection, this, _1));
-    hbaseProxyPtr->enableRetry();
-    hbaseProxyPtr->connect();
-    UnSendMessages::instance()[HBase].clear();
-    LOG_INFO << "Thread init succssful";
+//    //连接Hbase代理服务器
+//    TcpClientPtr hbaseProxyPtr(new TcpClient(loop, InetAddress(config_.HBaseProxyAddress_, config_.HBaseProxyPort_), "HBaseProxy"));
+//    LocalClients::instance()[HBase] = hbaseProxyPtr;
+//    hbaseProxyPtr->setConnectionCallback(
+//            bind(&TCPServer::onHBaseProxyConnection, this, _1));
+//    hbaseProxyPtr->enableRetry();
+//    hbaseProxyPtr->connect();
+//    UnSendMessages::instance()[HBase].clear();
+//    LOG_INFO << "Thread init succssful";
 }
 
 
