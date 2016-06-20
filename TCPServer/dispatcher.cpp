@@ -133,6 +133,7 @@ void Dispatcher::onStringMessage(const TcpConnectionPtr& conn,
             break;
         case DEVID_MSG:
             devidMessage(conn, frameHeader);
+            break;
         default:
             LOG_WARN << "UnKnow Message Type";
             break;

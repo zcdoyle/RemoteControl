@@ -209,7 +209,12 @@ public:
 //                else
 //                {
                     //打印这一帧
-                    printFrame("Receive", get_pointer(frameHeader), get_pointer(message), (size_t)(length - HeaderLength));
+//                    printFrame("Receive", get_pointer(frameHeader), get_pointer(message), (size_t)(length - HeaderLength));
+                    //解密这一帧
+                    Decrypt(get_pointer(message), key, length-HeaderLength);
+                    //打印这一帧，调试用
+                    size_t messageLenth = frameHeader->olen;
+                    printFrame("Receive", get_pointer(frameHeader), get_pointer(message), messageLenth);
                     buf->retrieve(length);
                     handleReceiveFrame(conn, frameHeader, message, receiveTime);
 //                }

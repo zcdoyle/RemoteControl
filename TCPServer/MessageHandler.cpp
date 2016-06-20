@@ -66,7 +66,7 @@ void MessageHandler::updateSensorDatainRedis(uint32_t DeviceID, uint16_t hcho, u
 {
     char command[256];
     sprintf(command, "HMSET SENSOR%d hcho %f pm2p5 %f temperature %f humidity %f time %s",
-            DeviceID, temperature / 1.0, humidity / 1.0, pm2p5 / 1.0, hcho / 1.0, timeStr);
+            DeviceID, hcho / 1.0, pm2p5 / 1.0, temperature / 1.0, humidity / 1.0, timeStr);
     RedisReply reply((redisReply*)redisCommand(tcpserver_->redisConn_,command));
 }
 
@@ -106,7 +106,7 @@ void MessageHandler::getMySQLDateTime(char* date, char* timestr)
     time_t timep;
     struct tm *p;
     time(&timep);
-    p=gmtime(&timep);
+    p=localtime(&timep);
 
     sprintf(date, "%04d-%02d-%02d", 1900+p->tm_year, 1+p->tm_mon, p->tm_mday);
 
@@ -132,7 +132,7 @@ void MessageHandler::getHBaseDateTime(char* date, char* timestr)
     time_t timep;
     struct tm *p;
     time(&timep);
-    p=gmtime(&timep);
+    p=localtime(&timep);
 
     sprintf(date, "%04d%02d%02d", 1900+p->tm_year, 1+p->tm_mon, p->tm_mday);
 
@@ -156,7 +156,7 @@ void MessageHandler::getRedisDateTime(char* timestr)
     time_t timep;
     struct tm *p;
     time(&timep);
-    p=gmtime(&timep);
+    p=localtime(&timep);
 
     sprintf(timestr, "%04d%02d%02d%02d%02d", 1900+p->tm_year, 1+p->tm_mon, p->tm_mday,p->tm_hour,p->tm_min);
 }

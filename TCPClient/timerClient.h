@@ -92,6 +92,7 @@ private:
         memset(message, 0, sizeof(message));
 
         FrameMessage msg;
+        msg.content.devid.res = 0;
         memcpy(message, &msg, MessageLength);
 
         codec_.send(connection_, totalLength, DEVID_MSG, message, dev_id);
