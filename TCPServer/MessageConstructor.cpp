@@ -34,7 +34,7 @@ void MessageConstructor::openControl(u_char* message,int opencontrol)
 {
     FrameMessage msg;
     msg.content.open.isopen = opencontrol;
-
+    msg.content.open.res = 0;
     memcpy(message, &msg, sizeof(msg));
 }
 
@@ -66,7 +66,7 @@ void MessageConstructor::settingControl(u_char* message,int childlockcontrol,int
     FrameMessage msg;
     msg.content.setting.click = childlockcontrol;
     msg.content.setting.ermd = erroremindercontrol;
-
+    msg.content.setting.res = 0;
     memcpy(message, &msg, sizeof(msg));
 }
 

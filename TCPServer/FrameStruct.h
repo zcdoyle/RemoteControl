@@ -126,8 +126,8 @@ typedef struct FrameHeader{
     unsigned res1:4; //保留字段1
     uint8_t res2; //保留字段2
     uint16_t seq; //帧序号
-    uint16_t headerCheck; //帧头CRC16校验
     uint32_t hard; //发送方的硬件编号
+    uint16_t headerCheck; //帧头CRC16校验
     uint32_t messageCheck; //数据段CRC32校验
 }FrameHeader;
 

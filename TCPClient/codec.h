@@ -21,6 +21,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include "aes.h"
+#include "crc.h"
 
 unsigned char key[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};	// 密钥
 
@@ -140,8 +141,8 @@ typedef struct FrameHeader{
     unsigned res1:4; //保留字段1
     uint8_t res2; //保留字段2
     uint16_t seq; //帧序号
-    uint16_t headerCheck; //帧头CRC16校验
     uint32_t hard; //发送方的硬件编号
+    uint16_t headerCheck; //帧头CRC16校验
     uint32_t messageCheck; //数据段CRC32校验
 }FrameHeader;
 
@@ -199,25 +200,44 @@ public:
                 shared_ptr<u_char > message((u_char *)malloc(length - HeaderLength));
                 memcpy(get_pointer(message), (u_char *)data + HeaderLength, length - HeaderLength);
 
-//                //检查校验信息
-//                uint8_t headerCheck = accumulate((u_char *)get_pointer(frameHeader), HeaderLength - 2);
-//                uint8_t messageCheck = accumulate((u_char *)get_pointer(message), length - HeaderLength);
-//                if(headerCheck != frameHeader->headerCheck || messageCheck != frameHeader->messageCheck)
-//                {
-//                    LOG_INFO << "Sum check Error";
-//                }
-//                else
-//                {
-                    //打印这一帧
-//                    printFrame("Receive", get_pointer(frameHeader), get_pointer(message), (size_t)(length - HeaderLength));
-                    //解密这一帧
-                    Decrypt(get_pointer(message), key, length-HeaderLength);
+                //解密这一帧
+                Decrypt(get_pointer(message), key, length-HeaderLength);
+                size_t messageLenth = frameHeader->olen;
+
+    //            char headerLine[256];
+    //            sprintf(headerLine, "Header: Header:%08x,length:%d,ver:%d,dev:%d,Type:%d,olen:%d,enc:%d,res1:%d,res2:%d,frameCount:%d,hard:%d,headerCheck:%4x,messageCheck:%8x",
+    //                    frameHeader->head, frameHeader->len, frameHeader->ver,frameHeader->dev,frameHeader->type, frameHeader->olen,frameHeader->enc,frameHeader->res1,frameHeader->res2,frameHeader->seq,frameHeader->hard, frameHeader->headerCheck,frameHeader->messageCheck);
+    //            LOG_DEBUG << headerLine;
+                //检查帧头CRC16校验信息
+                uint16_t crc16 = CRC16((u_char *)get_pointer(frameHeader), HeaderLength-6);
+                //检查数据CRC32校验信息
+                uint32_t crc32 = CRC32(get_pointer(message),messageLenth);
+
+                if(crc16 != frameHeader->headerCheck)
+                {
+                    char crclg[256];
+                    sprintf(crclg,"headerCheck:%4x receive:%4x",crc16,frameHeader->headerCheck);
+                    LOG_WARN << crclg <<" Header CRC16 error";
+                    skipWrongFrame(buf);
+                    break;
+                }
+
+                else if(crc32 != frameHeader->messageCheck)
+                {
+                    char crclg[256];
+                    sprintf(crclg,"messageCheck:%4x receive:%4x",crc32,frameHeader->messageCheck);
+                    LOG_WARN << crc32 <<" Message CRC32 error";
+                    skipWrongFrame(buf);
+                    break;
+                }
+
+                else
+                {
                     //打印这一帧，调试用
-                    size_t messageLenth = frameHeader->olen;
                     printFrame("Receive", get_pointer(frameHeader), get_pointer(message), messageLenth);
                     buf->retrieve(length);
                     handleReceiveFrame(conn, frameHeader, message, receiveTime);
-//                }
+                }
             }
             else
             {
@@ -243,10 +263,14 @@ public:
 
         sendFrame.olen = mLength;
         sendFrame.enc = 1;
+        sendFrame.res1 = 0;
+        sendFrame.res2 = 0;
         sendFrame.seq = frameCount_++;
-        sendFrame.headerCheck = 0;
-        sendFrame.messageCheck = 0;
-        sendFrame.hard = dev_id;
+        sendFrame.hard = devid;
+
+        //计算CRC16,CRC32校验
+        sendFrame.headerCheck = CRC16((u_char *)&sendFrame, HeaderLength-6);
+        sendFrame.messageCheck = CRC32(message,mLength);
 
         //对message加密
         expandText(message, get_pointer(encryMessage), mLength, encryLength);
@@ -272,11 +296,11 @@ private:
     Output:         无
     Return:         无
     *************************************************/
-    void printFrame(std::string tag,FrameHeader *frame, u_char* message, size_t messageLen)
+    void printFrame(std::string tag,FrameHeader *frameHeader, u_char* message, size_t messageLen)
     {
         char headerLine[256];
-        sprintf(headerLine, "%s Header: Header:%08x,length:%d,Type:%d,frameCount:%d, MessageLength:%ld, headerCheck:%d, messageCheck:%d", tag.c_str(),
-                frame->head, frame->len, frame->type, frame->seq, messageLen, frame->headerCheck, frame->messageCheck);
+        sprintf(headerLine, "%s Header: Header:%08x,length:%d,ver:%d,dev:%d,Type:%d,olen:%d,enc:%d,res1:%d,res2:%d,frameCount:%d,hard:%d,headerCheck:%4x,messageCheck:%8x", tag.c_str(),
+                frameHeader->head, frameHeader->len, frameHeader->ver,frameHeader->dev,frameHeader->type, frameHeader->olen,frameHeader->enc,frameHeader->res1,frameHeader->res2,frameHeader->seq, frameHeader->hard,frameHeader->headerCheck,frameHeader->messageCheck);
 
         std::string mess = tag;
         mess += " Message: ";

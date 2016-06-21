@@ -62,6 +62,8 @@ set(SOURCE_FILES
         daemonize.h
         daemonize.cpp
         timerClient.h
+	aes.h
+	aes.c
         )
 
 add_executable(TCPClient ${SOURCE_FILES})

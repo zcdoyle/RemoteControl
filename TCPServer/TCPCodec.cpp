@@ -55,32 +55,41 @@ void TCPCodec::onMessage(const TcpConnectionPtr& conn, Buffer *buf, Timestamp re
             shared_ptr<u_char > message((u_char *)malloc(length - HeaderLength));
             memcpy(get_pointer(message), (u_char *)data + HeaderLength, length - HeaderLength);
 
-//            //检查帧头CRC16校验信息
-//            uint16_t crc16 = CRC16((u_char *)get_pointer(frameHeader), HeaderLength);
-//            //检查数据CRC32校验，然后解密
-//            uint16_t crc32 = CRC32(get_pointer(message),length - HeaderLength);
-            bool crc16_ok = true,crc32_ok = true;
+            //解密这一帧
+            Decrypt(get_pointer(message), key, length-HeaderLength);
+            size_t messageLenth = frameHeader->olen;
 
-            if(!crc16_ok)
+//            char headerLine[256];
+//            sprintf(headerLine, "Header: Header:%08x,length:%d,ver:%d,dev:%d,Type:%d,olen:%d,enc:%d,res1:%d,res2:%d,frameCount:%d,hard:%d,headerCheck:%4x,messageCheck:%8x",
+//                    frameHeader->head, frameHeader->len, frameHeader->ver,frameHeader->dev,frameHeader->type, frameHeader->olen,frameHeader->enc,frameHeader->res1,frameHeader->res2,frameHeader->seq,frameHeader->hard, frameHeader->headerCheck,frameHeader->messageCheck);
+//            LOG_DEBUG << headerLine;
+
+            //检查帧头CRC16校验信息
+            uint16_t crc16 = CRC16((u_char *)get_pointer(frameHeader), HeaderLength-6);
+            //检查数据CRC32校验信息
+            uint32_t crc32 = CRC32(get_pointer(message),messageLenth);
+
+            if(crc16 != frameHeader->headerCheck)
             {
-                LOG_WARN << "Header CRC16 error";
+                char crclg[256];
+                sprintf(crclg,"headerCheck:%4x receive:%4x",crc16,frameHeader->headerCheck);
+                LOG_WARN << crclg <<" Header CRC16 error";
                 skipWrongFrame(buf);
                 break;
             }
 
-            else if(!crc32_ok)
+            else if(crc32 != frameHeader->messageCheck)
             {
-                LOG_WARN << "Message CRC32 error";
+                char crclg[256];
+                sprintf(crclg,"messageCheck:%4x receive:%4x",crc32,frameHeader->messageCheck);
+                LOG_WARN << crc32 <<" Message CRC32 error";
                 skipWrongFrame(buf);
                 break;
             }
 
             else
             {
-                //解密这一帧
-                Decrypt(get_pointer(message), key, length-HeaderLength);
                 //打印这一帧，调试用
-                size_t messageLenth = frameHeader->olen;
                 printFrame("Receive", get_pointer(frameHeader), get_pointer(message), messageLenth);
 
                 //收到一个完整的帧，交给回调函数处理
@@ -122,15 +131,15 @@ void TCPCodec::send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,u
 
     sendFrame.olen = mLength;
     sendFrame.enc = 1;
+    sendFrame.res1 = 0;
+    sendFrame.res2 = 0;
     sendFrame.seq = seq;
 
-    sendFrame.hard = 0;
-    sendFrame.headerCheck = 0;
-    sendFrame.messageCheck = 0;
+    //计算CRC16,CRC32校验
+    sendFrame.headerCheck = CRC16((u_char *)&sendFrame, HeaderLength-6);
+    sendFrame.messageCheck = CRC32(message,mLength);
 
-//    //计算CRC16,CRC32校验
-//    sendFrame.headerCheck = CRC16((u_char *)&sendFrame, HeaderLength);
-//    sendFrame.messageCheck = CRC32(message, mLength);
+    sendFrame.hard = 0;
 
     //对message加密
     expandText(message, get_pointer(encryMessage), mLength, encryLength);
@@ -155,11 +164,12 @@ Input:          tag: 打印帧类型
 Output:         无
 Return:         无
 *************************************************/
-void TCPCodec::printFrame(std::string tag,FrameHeader *frame, u_char* message, size_t messageLen)
+void TCPCodec::printFrame(std::string tag,FrameHeader *frameHeader, u_char* message, size_t messageLen)
 {
     char headerLine[256];
-    sprintf(headerLine, "%s Header: Header:%08x,length:%d,Type:%d,frameCount:%d, MessageLength:%ld, headerCheck:%d, messageCheck:%d", tag.c_str(),
-            frame->head, frame->len, frame->type, frame->seq, messageLen, frame->headerCheck, frame->messageCheck);
+    sprintf(headerLine, "%s Header: Header:%08x,length:%d,ver:%d,dev:%d,Type:%d,olen:%d,enc:%d,res1:%d,res2:%d,frameCount:%d,hard:%d,headerCheck:%4x,messageCheck:%8x", tag.c_str(),
+            frameHeader->head, frameHeader->len, frameHeader->ver,frameHeader->dev,frameHeader->type, frameHeader->olen,frameHeader->enc,frameHeader->res1,frameHeader->res2,frameHeader->seq, frameHeader->hard,frameHeader->headerCheck,frameHeader->messageCheck);
+
 
     std::string mess = tag;
     mess += " Message: ";

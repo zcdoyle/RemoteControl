@@ -111,6 +111,7 @@ private:
         msg.content.status.wspd = 1;
         msg.content.status.click = 1;
         msg.content.status.ermd = 1;
+        msg.content.status.res = 0;
         msg.content.status.time = 6;
         msg.content.status.ver = 1;
         memcpy(message, &msg, MessageLength);
@@ -147,6 +148,7 @@ private:
         msg.content.error.ibc = 1;
         msg.content.error.ibe = 1;
         msg.content.error.uve = 1;
+        msg.content.error.res = 0;
         memcpy(message, &msg, MessageLength);
 
         codec_.send(connection_, totalLength,ERROR_MSG, message, dev_id);

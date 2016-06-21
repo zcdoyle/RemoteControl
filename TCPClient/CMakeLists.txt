@@ -64,6 +64,8 @@ set(SOURCE_FILES
         timerClient.h
 	aes.h
 	aes.c
+	crc.h
+	crc.cpp
         )
 
 add_executable(TCPClient ${SOURCE_FILES})
