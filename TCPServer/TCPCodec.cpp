@@ -134,13 +134,12 @@ void TCPCodec::send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,u
     sendFrame.res1 = 0;
     sendFrame.res2 = 0;
     sendFrame.seq = seq;
+    sendFrame.hard = 0;
 
     //计算CRC16,CRC32校验
     sendFrame.headerCheck = CRC16((u_char *)&sendFrame, HeaderLength-6);
     sendFrame.messageCheck = CRC32(message,mLength);
-
-    sendFrame.hard = 0;
-
+    
     //对message加密
     expandText(message, get_pointer(encryMessage), mLength, encryLength);
     Encrypt(get_pointer(encryMessage), key, encryLength);
