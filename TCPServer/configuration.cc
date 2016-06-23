@@ -97,9 +97,14 @@ Return:         无
 *************************************************/
 Configuration::Configuration()
 {
+<<<<<<< HEAD
     ifstream configFile("./TCPServer.cfg", std::ios::in);
 //    ifstream configFile("/home/zcdoyle/pro/air/RemoteControl/TCPServer/build/bin/TCPServer.cfg", std::ios::in);
 //    ifstream configFile("/root/AirPurifier/TCPServer/build/bin/TCPServer.cfg", std::ios::in);
+=======
+    ifstream configFile("/home/zcdoyle/pro/air/RemoteControl/TCPServer/build/bin/TCPServer.cfg", std::ios::in);
+//    ifstream configFile("/root/SmartCity/TCPServer/build/bin/TCPServer.cfg", std::ios::in);
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
     char line[LINELENGTH];
 
     //逐行读入配置文件

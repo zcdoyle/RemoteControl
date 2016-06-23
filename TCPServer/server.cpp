@@ -1,5 +1,9 @@
 /*************************************************
+<<<<<<< HEAD
 Copyright: RemoteControl_AirPurifier
+=======
+Copyright: RemoteControl
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
 Author: zcdoyle
 Date: 2016-06-13
 Description：TCP 收发模块
@@ -82,7 +86,11 @@ void TCPServer::start()
     jsonMessageServer_.start();
 
     connectRedis();
+<<<<<<< HEAD
     //rpcClient_.connect(); //TODO:RPCClient
+=======
+    //rpcClient_.connect(); //TODO:RPCClient usage?
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
 
 //    Http::post(config_.smsAddress_, config_.smsPort_, config_.smsPage, "msg=TCPServer模块启动 【】");
 }

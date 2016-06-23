@@ -68,5 +68,8 @@ TCPServer/TCPCodec.h
 TCPServer/crc.h
 TCPServer/crc.cpp
 TCPClient/aes.h
+<<<<<<< HEAD
 TCPClient/crc.h
 TCPClient/crc.cpp
+=======
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b

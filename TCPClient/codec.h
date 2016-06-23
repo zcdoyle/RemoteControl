@@ -176,19 +176,27 @@ public:
             const void* data = buf->peek();
             int32_t header = *(int32_t*)data;
             int16_t length = *((int16_t *)data + 2);
+<<<<<<< HEAD
 
 //            char headerLine_[256];
 //            sprintf(headerLine_, "Header:%08x",header);
 //            LOG_DEBUG<< headerLine_;
 
             if(header != Header)
+=======
+            if(header != static_cast<int32_t>(Header))
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
             {
                 //非法帧头
                 LOG_ERROR << "Invade header" << conn;
                 skipWrongFrame(buf);
                 break;
             }
+<<<<<<< HEAD
             else if(length < 0 || length > 2047)
+=======
+            else if(length < 0 || length > 32765)
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
             {
                 //非法帧长度
                 LOG_ERROR << "Invade length" << length;
@@ -209,10 +217,17 @@ public:
                 Decrypt(get_pointer(message), key, length-HeaderLength);
                 size_t messageLenth = frameHeader->olen;
 
+<<<<<<< HEAD
 //                char headerLine[256];
 //                sprintf(headerLine, "Header: Header:%08x,length:%d,ver:%d,dev:%d,Type:%d,olen:%d,enc:%d,res1:%d,res2:%d,frameCount:%d,hard:%d,headerCheck:%4x,messageCheck:%8x",
 //                        frameHeader->head, frameHeader->len, frameHeader->ver,frameHeader->dev,frameHeader->type, frameHeader->olen,frameHeader->enc,frameHeader->res1,frameHeader->res2,frameHeader->seq,frameHeader->hard, frameHeader->headerCheck,frameHeader->messageCheck);
 //                LOG_DEBUG << headerLine;
+=======
+    //            char headerLine[256];
+    //            sprintf(headerLine, "Header: Header:%08x,length:%d,ver:%d,dev:%d,Type:%d,olen:%d,enc:%d,res1:%d,res2:%d,frameCount:%d,hard:%d,headerCheck:%4x,messageCheck:%8x",
+    //                    frameHeader->head, frameHeader->len, frameHeader->ver,frameHeader->dev,frameHeader->type, frameHeader->olen,frameHeader->enc,frameHeader->res1,frameHeader->res2,frameHeader->seq,frameHeader->hard, frameHeader->headerCheck,frameHeader->messageCheck);
+    //            LOG_DEBUG << headerLine;
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
                 //检查帧头CRC16校验信息
                 uint16_t crc16 = CRC16((u_char *)get_pointer(frameHeader), HeaderLength-6);
                 //检查数据CRC32校验信息

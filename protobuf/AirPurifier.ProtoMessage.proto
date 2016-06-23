@@ -5,167 +5,106 @@ option py_generic_services = true;
 
  message ProtoMessage
  {
-    //设备开关状态和运行模式
+    //开关状态、运行模式、风速和定时时长信息
     message Status
     {
-      optional uint32 switchStatus = 1 //开关状态
-      optional unit32 mode = 2; //运行模式
+      optional uint32 switchStatus = 1; //开关状态
+      optional uint32 mode = 2; //运行模式
+      optional uint32 windSpeed = 3; //风速档位
+      optional float timing = 4; //定时剩余时间
+    }
+
+    //其他设置
+    message Settings
+    {
+      optional uint32 childLock = 1; //儿童锁开关状态
+      optional uint32 light = 2; //灯光开关状态
+      optional uint32 sound = 3; //声音开关状态
+      optional float errorReminder = 4; //运行异常提醒开关状态
     }
 
    	//传感器采样值
    	message Sensor
    	{
-   		optional float temperature = 1; //温度
-   		optional float humidity = 2; //湿度
-   		optional float pm2p5 = 3; //PM2.5
+	  optional float temperature = 1; //温度
+   	  optional float humidity = 2; //湿度
+      optional float pm0p3 = 3; //PM0.3
+   	  optional float pm2p5 = 4; //PM2.5
+      optional float pm10 = 5; //PM10
+      optional float hcho = 6; //甲醛浓度
+      optional float ozn = 7; //臭氧浓度
+      optional float voc = 8; //voc值
+      optional float power = 9; //实时功率
    	}
 
-    optional uint32 messageType = 1; //消息类型
-    optional uint32 messageCode = 2; //消息编码
-    optional uint32 devID = 3; //设备编码
-    optional string date = 4;
-    optional string time = 5;
-    optional Status device_status = 6;
-    optional Sensor sensor = 7;
+    //异常和清洗提醒
+   	message Error
+   	{
+   	  optional uint32 fsc = 1; //初效过滤网清洗提示
+   	  optional uint32 ibc = 2; //离子箱清洗提示
+      optional uint32 ibe = 3; //离子箱故障提示
+   	  optional uint32 uve = 4; //UV灯故障提示
+   	}
+
+    optional uint32 devID = 1; //设备硬件编码
+    optional string date = 2; //YYYYMMDD格式，中间没有符号
+    optional string time = 3; //HHmmss格式，中间没有符号
+    optional Status status = 4;
+    optional Settings settings = 5;
+    optional Sensor sensor = 6;
+    optional Error error = 7;
+    optional uint32 messageType = 8;
+    /*
+      messageType 定义：
+      STATUS_MSG = 0x0000,  //设备的状态信息，如开关、运行模式等
+      SENSOR_MSG = 0x0001,  //传感器的监测值信息
+      SETTING_MSG = 0x0002, //设备的其他设置信息，如儿童锁、灯光开关等
+      ERR_MSG = 0x0003  //设备错误提示和清洗信息，如UV灯、滤网清洗提示等
+    */
 }
 
-/*
+
+//这块MySQL的内容主要用于计算设备的总工作时间和空气净化总量
 message MySQLRequest
 {
-    message UserInfo
-    {
-        optional uint32 userId = 1;
-        optional string username = 2;
-        optional string phone = 3;
-        optional string email = 4;
-        optional string registerTime = 5;
-        optional string lastLoginTime = 6;
-        optional string lastLoginPlace = 7;
-        repeated BindDevices BindInfo = 1;
-    }
-
-    //设备绑定信息
-    message BindInfo
-    {
-        optional uint32 userId = 1;
-        optional uint32 deviceId = 2;
-        optional uint32 operationType = 3; //是否已解绑
-    }
-
-    //设备基本信息
+    //设备信息
     message DeviceInfo
     {
-        optional uint32 id = 1;
-        optional string deviceId = 2; //设备唯一标识符
-        optional uint modelId = 3; //设备型号id
-        optional string activationTime = 4; //设备激活时间
-        optional float totalPurifiedAir = 5;
-        optional float totalWordedTime = 6;
-        optional float filterUsage = 7;
-        optional float filterRUL = 8;
-        optional float lastRepairTime = 9;
+      optional uint32 id = 1;
+      optional string deviceId = 2; //设备唯一标识符
+      optional float totalPurifiedAir = 3;
+      optional float totalWordedTime = 4;
     }
 
-    //设备型号信息
-    message ModelInfo
-    {
-        optional uint32 id = 1;
-        optional string modelName = 2; //设备型号名称
-        optional uint modelVersion = 3; //设备型号id
-        optional string description = 4; //设备型号描述
-    }
-
-    optional string username = 1; //用于用于注册、查询用户信息
-    optional string userPassword = 2; //用于用户注册、查询用户密码是否正确和修改密码
-    optional UserInfo userInfo = 3; //用于修改用户信息
-    optional BindInfo bindInfo = 4; //用于更新绑定信息
-    optional uint32 deviceId = 5; //用于查询设备信息
-    optional DeviceInfo deviceInfo = 6; //用于修改设备信息
-    optional uint32 modelId = 7; //用于查询设备型号信息
-    optional ModelInfo modelInfo = 8; //修改设备型号信息
-    optional string serverDateTime = 9; //服务器发送SQL请求的时间
-    optional uint32 messageCode = 10;
+    optional DeviceInfo deviceInfo = 1; //用于查询设备总工作时间和空气净化总量
+    optional string serverDateTime = 2; //服务器发送SQL请求的时间
+    optional uint32 messageCode = 3;
     /*
-        messageCode 定义：
-        code = 0x01 查询用户信息
-        code = 0x02 查询用户密码是否匹配
-        code = 0x03 增加用户信息
-        code = 0x04 修改用户信息(不包含修改密码信息)
-        code = 0x05 修改密码
-        code = 0x06 更新绑定信息(包括绑定和解绑)
-        code = 0x07 查询设备信息
-        code = 0x08 新增设备信息
-        code = 0x09 修改设备信息
-        code = 0x0A 查询设备型号信息
-        code = 0x0B 增加设备型号信息
-        code = 0x0C 修改设备型号信息
+      messageCode 定义：
+      code = 0x01 查询设备总工作时间和空气净化总量
+      code = 0x02 修改设备总工作时间和空气净化总量
     */
 }
 
 
 message MySQLResponse
 {
-    //从MySQL查询的用户信息
-    message UserInfo
-    {
-        optional uint32 userId = 1;
-        optional string username = 2;
-        optional string phone = 3;
-        optional string email = 4;
-        optional string registerTime = 5;
-        optional string lastLoginTime = 6;
-        optional string lastLoginPlace = 7;
-        repeated BindDevices BindInfo = 1;
-    }
-
-    //设备绑定信息
-    message BindInfo
-    {
-        optional uint32 userId = 1;
-        optional uint32 deviceId = 2;
-        optional uint32 status = 3; //是否已解绑
-    }
-
-    //设备基本信息
+    //设备信息
     message DeviceInfo
     {
-        optional uint32 id = 1;
-        optional string deviceId = 2; //设备唯一标识符
-        optional uint modelId = 3; //设备型号id
-        optional string activationTime = 4; //设备激活时间
-        optional float totalPurifiedAir = 5;
-        optional float totalWordedTime = 6;
-        optional float filterUsage = 7;
-        optional float filterRUL = 8;
-        optional float lastRepairTime = 9;
-    }
-
-    //设备型号信息
-    message ModelInfo
-    {
-        optional uint32 id = 1;
-        optional string modelName = 2; //设备型号名称
-        optional uint modelVersion = 3; //设备型号id
-        optional string description = 4; //设备型号描述
+      optional uint32 id = 1;
+      optional string deviceId = 2; //设备唯一标识符
+      optional float totalPurifiedAir = 3;
+      optional float totalWordedTime = 4;
     }
 
     optional uint32 status = 1; //对数据库的操作结果，1成功/0失败
     optional string message = 2; //从数据库返回的信息
-    optional UserInfo userInfo = 3;
-    optional BindInfo bindInfo = 4;
-    optional DeviceInfo deviceInfo = 5;
-    optional ModelInfo modelInfo = 6;
-    optional uint32 messageCode = 7;
+    optional DeviceInfo deviceInfo = 3;
 }
 
 service MySQLService
 {
-    rpc login (MySQLRequest) returns (MySQLResponse);
-    rpc updateUserInfo (MySQLRequest) returns (MySQLResponse);
-    rpc bindDevice (MySQLRequest) returns (MySQLResponse);
-    rpc updateModelInfo (MySQLRequest) returns (MySQLResponse);
-    rpc queryModel (MySQLRequest) returns (MySQLResponse);
-
-    rpc updateDevice (MySQLRequest) returns (MySQLResponse);
-    rpc queryDevice (MySQLRequest) returns (MySQLResponse);
+  rpc updateDevice (MySQLRequest) returns (MySQLResponse);
+  rpc queryDevice (MySQLRequest) returns (MySQLResponse);
 }

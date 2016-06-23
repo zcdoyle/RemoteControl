@@ -1,5 +1,9 @@
 /*************************************************
+<<<<<<< HEAD
 Copyright: RemoteControl_AirPurifier
+=======
+Copyright: RemoteControl
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
 Author: zcdoyle
 Date: 2016-06-13
 Description：消息处理器，完成具体消息的操作
@@ -137,8 +141,12 @@ void MessageHandler::getHBaseDateTime(char* date, char* timestr)
 
     int hour = p->tm_hour;
     int min = p->tm_min;
+<<<<<<< HEAD
     int sec = p->tm_sec;
     sprintf(timestr, "%02d%02d%02d", hour, min, sec);
+=======
+    sprintf(timestr, "%02d%02d", hour, min);
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
 }
 
 /*************************************************
@@ -198,12 +206,21 @@ void MessageHandler::onStatusMessage(shared_ptr<FrameHeader>& frameHeader, share
 //    status->set_time(time);
 //    status->set_ver(ver);
 //    tcpserver_->sendProtoMessage(protoMessage, HBase);
+<<<<<<< HEAD
 
     //在Redis更新设备状态信息
     char timeStr[16];
     getRedisDateTime(timeStr);
     updateStatusDatainRedis(senId,isopen,mode,wspd,time,ver,click,ermd,timeStr);
 
+=======
+
+    //在Redis更新设备状态信息
+    char timeStr[16];
+    getRedisDateTime(timeStr);
+    updateStatusDatainRedis(senId,isopen,mode,wspd,time,ver,click,ermd,timeStr);
+
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
     LOG_DEBUG <<"STATUS: " << senId <<
                 " isopen: " << isopen <<
                 " mode: " << mode <<
@@ -262,7 +279,11 @@ void MessageHandler::onSensorMessage(shared_ptr<FrameHeader>& frameHeader, share
 }
 
 /*************************************************
+<<<<<<< HEAD
 Description:    接收到错误信息帧
+=======
+Description:    接收到传感器信息帧
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
 Calls:          Dispatcher::ErrorMessage()
 Input:          frameHeader: 帧头指针
                 message: 消息字指针
@@ -307,7 +328,11 @@ void MessageHandler::onErrorMessage(shared_ptr<FrameHeader>& frameHeader, shared
 }
 
 /*************************************************
+<<<<<<< HEAD
 Description:    收到硬件编号信息帧，处理信息
+=======
+Description:    收到配置信息帧，处理信息
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
 Calls:          Dispatcher::devidMessage()
 Input:          frameHeader: 帧头指针
                 message: 消息字指针

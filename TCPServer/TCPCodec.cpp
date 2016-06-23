@@ -139,7 +139,11 @@ void TCPCodec::send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,u
     //计算CRC16,CRC32校验
     sendFrame.headerCheck = CRC16((u_char *)&sendFrame, HeaderLength-6);
     sendFrame.messageCheck = CRC32(message,mLength);
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
     //对message加密
     expandText(message, get_pointer(encryMessage), mLength, encryLength);
     Encrypt(get_pointer(encryMessage), key, encryLength);

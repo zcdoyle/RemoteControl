@@ -1,5 +1,9 @@
 /*************************************************
+<<<<<<< HEAD
 Copyright: RemoteControl_AirPurifier
+=======
+Copyright: RemoteControl
+>>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
 Author: zcdoyle
 Date: 2016-06-13
 Description：消息分发器，根据设备发来不同的帧做对应的处理
