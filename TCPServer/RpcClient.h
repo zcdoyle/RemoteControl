@@ -1,7 +1,7 @@
 /*************************************************
-Copyright: SmartLight
-Author: albert
-Date: 2016-12-28
+Copyright: RemoteControl_AirPurifier
+Author: zcdoyle
+Date: 2016-06-23
 Description: RPC客户端
 **************************************************/
 
@@ -16,11 +16,11 @@ Description: RPC客户端
 #include <muduo/net/protorpc/RpcChannel.h>
 #include <boost/bind.hpp>
 
-#include "SmartCity.ProtoMessage.pb.h"
+#include "AirPurifier.ProtoMessage.pb.h"
 
 
 using namespace muduo::net;
-using namespace SmartCity;
+using namespace AirPurifier;
 
 class RpcClient : boost::noncopyable
 {

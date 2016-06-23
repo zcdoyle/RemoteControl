@@ -1,7 +1,7 @@
 /*************************************************
-Copyright: SmartLight
-Author: albert
-Date: 2015-12-28
+Copyright: RemoteControl_AirPurifier
+Author: zcdoyle
+Date: 2016-06-23
 Description：创建守护程序，脱离终端
 **************************************************/
 

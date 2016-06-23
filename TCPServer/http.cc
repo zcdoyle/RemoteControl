@@ -1,7 +1,7 @@
 /*************************************************
-Copyright: SmartLight
-Author: albert
-Date: 2016-02-15
+Copyright: RemoteControl_AirPurifier
+Author: zcdoyle
+Date: 2016-06-23
 Description：用于发送HTTP请求，目前只实现POST方法
 **************************************************/
 

@@ -1,11 +1,3 @@
-/*************************************************
-Copyright: RemoteControl_AirPurifier
-Author: zcdoyle
-Date: 2016-06-23
-Description：创建守护程序，脱离终端
-**************************************************/
-
-
 #include "daemonize.h"
 
 #include <stdlib.h>
@@ -25,14 +17,6 @@ Description：创建守护程序，脱离终端
 #include <sys/stat.h>
 #include <stdio.h>
 
-
-/*************************************************
-Description:    创建守护程序，脱离终端
-Calls:          main
-Input:          无
-Output:         无
-Return:         无
-*************************************************/
 void daemonize()
 {
     pid_t pid;
@@ -62,11 +46,12 @@ void daemonize()
     }
     if((pid = fork()) < 0)
     {
-        printf("Can't fork");
+        printf("Can;t fork");
         exit(-1);
     }
     else if(pid != 0)
     {
         exit(0);
     }
+
 }

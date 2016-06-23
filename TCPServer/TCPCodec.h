@@ -1,7 +1,7 @@
 /*************************************************
-Copyright: SmartLight
-Author: albert
-Date: 2015-12-16
+Copyright: RemoteControl_AirPurifier
+Author: zcdoyle
+Date: 2016-06-13
 Description: 编码解码TCP信息帧
 **************************************************/
 
@@ -50,26 +50,20 @@ public:
     Output:         无
     Return:         无
     *************************************************/
-    explicit  TCPCodec(int dest,const StringMessageCallback& cb):
-        dispatcherCallback_(cb),
-        serveAddr_(dest)
+    explicit  TCPCodec(const StringMessageCallback& cb):
+        dispatcherCallback_(cb)
     {}
 
     void onMessage(const TcpConnectionPtr& conn, Buffer *buf, Timestamp receiveTime);
 
 private:
 
-    void send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,uint32_t frameCount, u_char * message);
+    void send(TcpConnectionPtr conn, uint16_t totalLength, uint16_t type,uint16_t seq, u_char * message);
 
     void printFrame(std::string tag,FrameHeader *frame, u_char* message, size_t messageLen);
-    void getTime(uint16_t* year, uint16_t *md, uint32_t *time);
-    static uint8_t accumulate(u_char *message, size_t length);
     void skipWrongFrame(Buffer *buf);
 
     StringMessageCallback dispatcherCallback_;
-    MutexLock timeMutex_;
-    //服务器信宿
-    const int serveAddr_;
 };
 
 

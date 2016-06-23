@@ -1,7 +1,7 @@
 /*************************************************
-Copyright: SmartLight
-Author: albert
-Date: 2015-12-28
+Copyright: RemoteControl_AirPurifier
+Author: zcdoyle
+Date: 2016-06-23
 Description：读取配置文件
 **************************************************/
 
@@ -97,8 +97,9 @@ Return:         无
 *************************************************/
 Configuration::Configuration()
 {
-    ifstream configFile("/home/albert/SmartCity/TCPServer/build/bin/TCPServer.cfg", std::ios::in);
-//    ifstream configFile("/root/SmartCity/TCPServer/build/bin/TCPServer.cfg", std::ios::in);
+    ifstream configFile("./TCPServer.cfg", std::ios::in);
+//    ifstream configFile("/home/zcdoyle/pro/air/RemoteControl/TCPServer/build/bin/TCPServer.cfg", std::ios::in);
+//    ifstream configFile("/root/AirPurifier/TCPServer/build/bin/TCPServer.cfg", std::ios::in);
     char line[LINELENGTH];
 
     //逐行读入配置文件
