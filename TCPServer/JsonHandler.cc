@@ -1,9 +1,5 @@
 /*************************************************
-<<<<<<< HEAD
 Copyright: RemoteControl_AirPurifier
-=======
-Copyright: RemoteControl
->>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
 Author: zcdoyle
 Date: 2016-06-13
 Description：处理JSON消息
@@ -131,11 +127,7 @@ void JsonHandler::modeControl(const TcpConnectionPtr& jsonConn, const Document& 
     type = MODE_CTRL;
 
     int MessageLength = 1;
-<<<<<<< HEAD
     shared_ptr<u_char> message((u_char*)malloc(MessageLength)); //构造控制模式帧，需要1byte空间
-=======
-    shared_ptr<u_char> message((u_char*)malloc(1)); //构造控制模式帧，需要1byte空间
->>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
     MessageConstructor::modeControl(get_pointer(message),modecontrol);
 
     function<void()> sendCb = bind(&TCPServer::sendWithTimer, tcpServer_, devid, conn, type, HeaderLength+MessageLength, message);
@@ -157,11 +149,7 @@ void JsonHandler::timeControl(const TcpConnectionPtr& jsonConn, const Document& 
     type = TIME_CTRL;
 
     int MessageLength = 1;
-<<<<<<< HEAD
     shared_ptr<u_char> message((u_char*)malloc(MessageLength)); //构造控制定时帧，需要1byte空间
-=======
-    shared_ptr<u_char> message((u_char*)malloc(1)); //构造控制模式帧，需要1byte空间
->>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
     MessageConstructor::timeControl(get_pointer(message),timecontrol);
 
     function<void()> sendCb = bind(&TCPServer::sendWithTimer, tcpServer_, devid, conn, type, HeaderLength+MessageLength, message);
@@ -183,11 +171,7 @@ void JsonHandler::settingControl(const TcpConnectionPtr& jsonConn, const Documen
     type = SETTING_CTRL;
 
     int MessageLength = 1;
-<<<<<<< HEAD
     shared_ptr<u_char> message((u_char*)malloc(MessageLength)); //构造控制设置帧，需要1byte空间
-=======
-    shared_ptr<u_char> message((u_char*)malloc(1)); //构造控制模式帧，需要1byte空间
->>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
     MessageConstructor::settingControl(get_pointer(message),childlockcontrol,erroremindercontrol);
 
     function<void()> sendCb = bind(&TCPServer::sendWithTimer, tcpServer_, devid, conn, type, HeaderLength+MessageLength, message);
@@ -208,11 +192,7 @@ void JsonHandler::updateControl(const TcpConnectionPtr& jsonConn, const Document
     type = UPDATE_CTRL;
 
     int MessageLength = 1;
-<<<<<<< HEAD
     shared_ptr<u_char> message((u_char*)malloc(MessageLength)); //构造控制更新帧，需要1byte空间
-=======
-    shared_ptr<u_char> message((u_char*)malloc(1)); //构造控制模式帧，需要1byte空间
->>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
     MessageConstructor::updateControl(get_pointer(message),updatecontrol);
 
     function<void()> sendCb = bind(&TCPServer::sendWithTimer, tcpServer_, devid, conn, type, HeaderLength+MessageLength, message);

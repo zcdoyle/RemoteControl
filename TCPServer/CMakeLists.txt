@@ -40,10 +40,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 # muduo
 if(NOT MUDUO_PATH)
     set(MUDUO_PATH "/home/$ENV{USER}/third_lib/muduo-master/build/${CMAKE_BUILD_TYPE}-install")
-<<<<<<< HEAD
 #   set(MUDUO_PATH "/usr/hao/Third_Party/muduo/${CMAKE_BUILD_TYPE}-install")
-=======
->>>>>>> f806e3b4d4421dfe22cf15a822e4fa092164840b
 endif()
 find_path(Muduo_INCLUDE_DIR muduo "${MUDUO_PATH}/include")
 find_path(Muduo_LIBRARY_DIR libmuduo_net.a "${MUDUO_PATH}/lib")
