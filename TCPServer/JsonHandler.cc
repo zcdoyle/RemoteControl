@@ -31,31 +31,31 @@ Return:         无
 *************************************************/
 void JsonHandler::onJsonMessage(const TcpConnectionPtr& conn, const Document &jsonObject)
 {
-    if(jsonObject.HasMember(OpenControl))
+     if(jsonObject.HasMember(OpenControl))
     {
         openControl(conn, jsonObject);
     }
-    else if(jsonObject.HasMember(ModeControl))
+    if(jsonObject.HasMember(ModeControl))
     {
         modeControl(conn, jsonObject);
     }
-    else if(jsonObject.HasMember(TimeControl))
+    if(jsonObject.HasMember(TimeControl))
     {
         timeControl(conn, jsonObject);
     }
-    else if(jsonObject.HasMember(ChildLockControl))
+    if(jsonObject.HasMember(ChildLockControl))
     {
         settingControl(conn, jsonObject);
     }
-    else if(jsonObject.HasMember(ErrorReminderControl))
+    if(jsonObject.HasMember(ErrorReminderControl))
     {
         settingControl(conn, jsonObject);
     }
-    else if(jsonObject.HasMember(UpdateControl))
+    if(jsonObject.HasMember(UpdateControl))
     {
         updateControl(conn, jsonObject);
     }
-    else
+    if(!jsonObject.HasMember(OpenControl)&&!jsonObject.HasMember(ModeControl)&&!jsonObject.HasMember(TimeControl)&&!jsonObject.HasMember(ChildLockControl)&&!jsonObject.HasMember(ErrorReminderControl)&&!jsonObject.HasMember(UpdateControl))
     {
         return returnJsonResult(conn, false, "unkonw message");
     }
